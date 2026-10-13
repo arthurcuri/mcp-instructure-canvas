@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-instructure-canvas"
+version = "0.1.0"
+description = "Local, read-only Canvas LMS MCP server for students"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Arthur Kramberger" }]
+dependencies = [
+    "httpx>=0.28,<1",
+    "mcp>=1.28,<2",
+    "python-dotenv>=1.1,<2",
+]
+
+[project.urls]
+Repository = "https://github.com/arthurcuri/mcp-instructure-canvas"
+Issues = "https://github.com/arthurcuri/mcp-instructure-canvas/issues"
+
+[project.scripts]
+canvas-mcp-server = "canvas_mcp.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/canvas_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]

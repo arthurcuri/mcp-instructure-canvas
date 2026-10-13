@@ -1,0 +1,7 @@
+# Add this section to ~/.codex/config.toml, preserving existing settings.
+# A trusted project can also use .codex/config.toml.
+# Replace the example paths with absolute paths on your computer.
+# Credentials remain in the ignored .env file; do not put tokens here.
+[mcp_servers.canvas-pucminas]
+command = "/absolute/path/to/mcp-instructure-canvas/.venv/bin/canvas-mcp-server"
+args = ["--env-file", "/absolute/path/to/mcp-instructure-canvas/.env"]
