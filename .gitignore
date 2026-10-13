@@ -13,4 +13,12 @@ dist/
 build/
 .firecrawl/
 .mcp.json
+.local/
+.claude/settings.local.json
+.codex/config.toml
+.codex/config.local.toml
+.gemini/settings.json
+.cursor/mcp.json
+.kiro/settings/mcp.json
+automation/*.local.*
 .DS_Store

@@ -1,0 +1,11 @@
+---
+description: Canvas MCP architecture, validation and local data handling
+alwaysApply: true
+---
+
+Use the root @AGENTS.md as the shared repository instructions. Cursor can also
+discover that file directly. Read it before changing server or automation code.
+
+Canvas access is GET-only. Mock HTTP in tests; do not open `.env` while exploring
+the source. Put reports and logs in `.local/`. Keep MCP configurations specific
+to a contributor's computer out of commits. Use the root README's setup steps.

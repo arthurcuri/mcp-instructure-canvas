@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Contributor guidance and MCP templates for Claude Code, Codex, Gemini CLI, Cursor and Kiro.
+- Detailed token generation, installation, client setup and local-runtime documentation.
+- Personal expiration annotations removed from public examples; private configs/reports ignored.
+- Optional weekly deadline snapshots and launchd/cron examples in the same repository.
+- Telegram delivery and LLM integration remain pending; no scheduler is activated by installation.
+
 ## 0.1.0 — 2026-10-13
 
 - Local stdio MCP with eight read-only course, assignment, deadline and content tools.

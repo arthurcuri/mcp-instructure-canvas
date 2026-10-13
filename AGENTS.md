@@ -1,13 +1,17 @@
 # Repository instructions
 
-This is a personal, local, read-only Canvas MCP server. Current scope is the MCP;
-cron, Telegram delivery and deployment are separate work to implement when requested.
+This is a personal, local, read-only Canvas MCP server. Weekly snapshots and
+opt-in scheduling templates share this repository. Telegram delivery, responses
+and LLM automation are still pending; do not claim they work or activate jobs
+while preparing configuration examples.
 
 ## Agent clients
 
-Codex automatically reads this `AGENTS.md`. Claude Code receives the same shared
-instructions through `CLAUDE.md`. MCP compatibility comes from the stdio protocol,
-independently of the client's instruction files; both clients run the same binary.
+Codex, Cursor and Kiro support this root `AGENTS.md`. Claude Code and Gemini CLI
+import it through `CLAUDE.md` and `GEMINI.md`. Native guidance lives in `.claude/rules/`,
+`.cursor/rules/` and `.kiro/steering/`; client-specific READMEs/templates also live
+in `.claude/`, `.codex/`, `.gemini/`, `.cursor/` and `.kiro/`. Keep shared rules here.
+MCP compatibility comes from stdio, independently of these instruction files.
 
 The personal server is named `canvas-pucminas`. Discover its tools through MCP.
 Prefer `get_due_assignments` for deadlines and call `get_assignment` for complete
@@ -27,12 +31,17 @@ and the differences between these configurations are documented in `README.md`.
 - `service.py`: course queries, personal submission state and local date windows.
 - `server.py`: eight MCP tools with read-only annotations and structured results.
 - `__main__.py`: stdio entry point plus `--test` and `--config` diagnostics.
+- `weekly.py`: the `canvas-weekly-check` CLI; reads Canvas and atomically saves a private snapshot.
+- `automation/`: a launcher and opt-in launchd/cron templates; no Telegram or LLM calls yet.
 
 ## Invariants
 
 - Keep Canvas access read-only. Do not add write endpoints or arbitrary code execution.
 - Never print, commit, embed in client config, or return `CANVAS_API_TOKEN`.
-  `.env` is private. `.env.example` contains placeholders only.
+  `.env` is private. `.env.example` contains placeholders only. Personal expiry
+  dates and other notes belong in ignored local files, never in public examples.
+- Real client configuration copies and `.local/` reports/logs are ignored. Templates
+  use fictitious paths; do not commit tokens or auto-approve tools for contributors.
 - Do not read `.env` during routine source exploration. Tests must use synthetic
   credentials and mocked HTTP; live tests are opt-in for authorized integration work.
 - Keep credentials within the configured HTTPS API origin; do not follow redirects.
@@ -50,9 +59,10 @@ and the differences between these configurations are documented in `README.md`.
 
 ```sh
 uv sync --locked
-uv run ruff check src tests scripts
-uv run ruff format --check src tests scripts
+uv run ruff check src tests scripts automation
+uv run ruff format --check src tests scripts automation
 uv run pytest -q
+bash -n automation/run_weekly.sh
 uv build
 ```
 

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "canvas-pucminas": {
+      "type": "stdio",
+      "command": "/absolute/path/to/mcp-instructure-canvas/.venv/bin/canvas-mcp-server",
+      "args": ["--env-file", "/absolute/path/to/mcp-instructure-canvas/.env"]
+    }
+  }
+}

@@ -22,6 +22,7 @@ Issues = "https://github.com/arthurcuri/mcp-instructure-canvas/issues"
 
 [project.scripts]
 canvas-mcp-server = "canvas_mcp.__main__:main"
+canvas-weekly-check = "canvas_mcp.weekly:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.11,<1"]

@@ -1,0 +1,5 @@
+# Optional project MCP configuration. Copy to .codex/config.toml and adapt paths.
+# Root AGENTS.md remains the canonical developer instructions.
+[mcp_servers.canvas-pucminas]
+command = "/absolute/path/to/mcp-instructure-canvas/.venv/bin/canvas-mcp-server"
+args = ["--env-file", "/absolute/path/to/mcp-instructure-canvas/.env"]

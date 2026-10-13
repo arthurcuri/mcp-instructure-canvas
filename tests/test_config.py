@@ -22,14 +22,14 @@ def test_explicit_env_works_outside_repository_without_revealing_token(tmp_path,
     path.write_text(
         "CANVAS_API_URL=https://canvas.example.test\n"
         "CANVAS_API_TOKEN=test-secret\n"
-        "CANVAS_TOKEN_EXPIRES_AT=2027-01-11\n"
+        "CANVAS_TOKEN_EXPIRES_AT=2030-06-30\n"
         "CANVAS_DEFAULT_COURSE_ID=286470\n",
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path.parent)
     settings = Settings.load(path)
     assert settings.api_url == "https://canvas.example.test/api/v1"
-    assert settings.token_expires_at == date(2027, 1, 11)
+    assert settings.token_expires_at == date(2030, 6, 30)
     assert settings.default_course_id == 286470
     assert "test-secret" not in repr(settings)
     assert "test-secret" not in str(settings.public_info())
