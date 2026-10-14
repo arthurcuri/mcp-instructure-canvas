@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Optional daily Actions reminders at 09:17 São Paulo time, gated by `CANVAS_DAILY_ENABLED`.
+- Daily/weekly setup guide using the same Telegram and Canvas secrets; schedules remain opt-in.
+
 ## 0.2.0 — 2026-10-13
 
 - Official bundled REST catalog: 1,118 operations across 144 groups, with offline discovery.

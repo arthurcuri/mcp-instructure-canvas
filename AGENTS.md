@@ -37,7 +37,7 @@ and the differences between these configurations are documented in `README.md`.
 - `__main__.py`: stdio entry point plus `--test` and `--config` diagnostics.
 - `weekly.py`: the `canvas-weekly-check` CLI; reads Canvas and atomically saves a private snapshot.
 - `notifications.py`: explicitly requested Telegram delivery and private chat-ID discovery.
-- `automation/` and `.github/workflows/weekly-canvas.yml`: opt-in local/cloud scheduling, no LLM calls.
+- `automation/` and the daily/weekly Canvas Actions workflows: opt-in scheduling, no LLM calls.
 
 ## Invariants
 

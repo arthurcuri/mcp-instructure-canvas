@@ -316,8 +316,9 @@ comando local; mantemos o código e os modelos em [automation/](automation/READM
 para permitir manutenção e reprodução pelos desenvolvedores.
 
 **Estado:** a consulta semanal, o relatório privado e o envio opcional ao Telegram
-estão implementados. Há modelos locais e um workflow do GitHub Actions no mesmo
-repositório. Receber respostas no Telegram e chamar Claude Code a partir delas
+estão implementados. Há modelos locais e workflows do GitHub Actions no mesmo
+repositório, com frequências semanal e diária. Receber respostas no Telegram e
+chamar Claude Code a partir delas
 ainda está em construção.
 Nenhum job é ativado pela instalação, pelo registro do MCP ou pelos testes.
 
@@ -355,6 +356,12 @@ O workflow [weekly-canvas.yml](.github/workflows/weekly-canvas.yml) está prepar
 para **segunda-feira às 09h17, no fuso de São Paulo**. O agendamento fica inativo
 até você criar a variável `CANVAS_WEEKLY_ENABLED=true` nas configurações do repo.
 Também é possível executar manualmente com **Actions → Weekly Canvas reminder → Run workflow**.
+
+Para receber **todos os dias às 09h17**, use
+[daily-canvas.yml](.github/workflows/daily-canvas.yml), escolha **Daily Canvas reminder**
+em Actions e ative `CANVAS_DAILY_ENABLED=true` em Variables após o teste manual.
+Os secrets são os mesmos; deixe `CANVAS_WEEKLY_ENABLED=false` para evitar duplicação
+na segunda-feira. Cada mensagem inclui as atividades pendentes dos próximos sete dias.
 
 1. Configure `CANVAS_API_TOKEN` em **Settings → Secrets and variables → Actions → Secrets**.
 2. Para enviar mensagens, configure também `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.

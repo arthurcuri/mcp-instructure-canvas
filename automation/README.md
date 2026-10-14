@@ -1,4 +1,4 @@
-# Automação semanal
+# Automação do Canvas
 
 Esta pasta pertence ao mesmo repositório do MCP. Um agendamento pode chamar um
 comando local sem precisar de outro repo; versionar o script aqui facilita sua manutenção.
@@ -13,6 +13,7 @@ comando local sem precisar de outro repo; versionar o script aqui facilita sua m
 | Modelo semanal de launchd ou cron | Disponível, não ativado automaticamente |
 | Enviar mensagem ao Telegram | Implementado, opt-in com `--telegram` |
 | Workflow semanal no GitHub Actions | Disponível, schedule condicionado a variável explícita |
+| Workflow diário no GitHub Actions | Disponível, schedule condicionado a `CANVAS_DAILY_ENABLED=true` |
 | Receber a resposta do usuário no Telegram | Pendente |
 | Chamar Claude Code para ajudar com a atividade | Pendente |
 
@@ -174,9 +175,17 @@ Referências: [criação de bots](https://core.telegram.org/bots/tutorial),
 
 ## 5. GitHub Actions sem o Mac ligado
 
-O [workflow](../.github/workflows/weekly-canvas.yml) faz a consulta diretamente
+Os workflows fazem a consulta diretamente
 à API, sem depender de Claude Code aberto, processo MCP permanente ou deploy.
-Ele roda **segunda-feira, 09h17, America/Sao_Paulo**, em um runner temporário.
+Escolha a frequência desejada; os horários usam `America/Sao_Paulo`:
+
+| Frequência | Workflow / nome em Actions | Horário | Variável de ativação |
+|---|---|---|---|
+| Diário | [daily-canvas.yml](../.github/workflows/daily-canvas.yml) / Daily Canvas reminder | Todos os dias, 09h17 | `CANVAS_DAILY_ENABLED=true` |
+| Semanal | [weekly-canvas.yml](../.github/workflows/weekly-canvas.yml) / Weekly Canvas reminder | Segunda-feira, 09h17 | `CANVAS_WEEKLY_ENABLED=true` |
+
+Os dois ficam disponíveis para execução manual antes da ativação automática.
+Ative apenas uma frequência para não receber duas mensagens na segunda-feira.
 A instalação e o push não preenchem secrets nem habilitam o schedule.
 
 ### Configurar e testar
@@ -192,23 +201,28 @@ A instalação e o push não preenchem secrets nem habilitam o schedule.
 
 3. Na aba **Variables**, você pode configurar `CANVAS_API_URL` e
    `CANVAS_TIMEZONE`. Os padrões são a PUC Minas e `America/Sao_Paulo`.
-4. Em **Actions**, escolha **Weekly Canvas reminder → Run workflow**, usando
+4. Em **Actions**, escolha **Daily Canvas reminder → Run workflow**, usando
    a branch padrão. Essa execução manual funciona antes de habilitar o schedule.
 5. Verifique o job e o Telegram. Sem os dois secrets do Telegram, o job apenas
    gera o relatório se ambos estiverem vazios. Se só um estiver preenchido, ele
    falha antes da consulta, indicando a configuração faltante.
-6. Quando estiver pronto, crie **em Variables** `CANVAS_WEEKLY_ENABLED` com
-   valor exatamente `true`. Isso habilita as execuções semanais.
+6. Para envio diário, crie **em Variables** `CANVAS_DAILY_ENABLED` com valor
+   exatamente `true`. Se o semanal já estiver ativo, defina `CANVAS_WEEKLY_ENABLED=false`.
+   Para escolher apenas o semanal, execute **Weekly Canvas reminder** no passo 4
+   e habilite somente `CANVAS_WEEKLY_ENABLED=true`.
 
 O token passa a ficar também sob os controles de secrets do GitHub, além da sua
 máquina. Cadastre apenas os valores necessários: não faça upload do `.env`.
 Não foram cadastrados secrets nem ativada a variável por este projeto.
 
-O workflow verifica todas as matérias ativas nos próximos sete dias e força
+Cada execução verifica todas as matérias ativas nos próximos sete dias e força
 `CANVAS_READ_ONLY=true`. Gera um JSON privado no runner e registra somente
 contagens. Não faz upload de artifacts, não persiste dados do curso em cache e
 não faz commit de relatórios. O relatório desaparece ao fim do runner.
 Se configurar os secrets do bot, o envio é automático nesse job: não exige IA.
+No modo diário, a mesma atividade pode aparecer em vários dias enquanto estiver
+pendente e dentro dos próximos sete dias. É enviado um resumo mesmo quando
+nenhuma atividade tiver prazo no período. Nenhuma entrega é realizada por esses jobs.
 
 ### Custo
 
@@ -229,9 +243,10 @@ com horário garantido. Schedules usam a branch padrão e repositórios público
 podem ter o agendamento desativado após **60 dias sem atividade**.
 Veja a [documentação oficial](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
-Para desativar as consultas automáticas, remova a variável ou defina
-`CANVAS_WEEKLY_ENABLED=false`. Para desativar o workflow inteiro, inclusive
-execuções manuais, use **Actions → Weekly Canvas reminder → menu → Disable workflow**.
+Para desativar as consultas automáticas diárias, remova a variável ou defina
+`CANVAS_DAILY_ENABLED=false`; para o semanal, use `CANVAS_WEEKLY_ENABLED=false`.
+Para desativar um workflow inteiro, inclusive execuções manuais, use
+**Actions → nome do workflow → menu → Disable workflow**.
 Se o GitHub o desativar por inatividade, use **Enable workflow** no mesmo menu
 e mantenha a variável habilitada. Reexecuções manuais podem enviar o mesmo
 relatório de novo; não há controle persistente de deduplicação nesta versão.

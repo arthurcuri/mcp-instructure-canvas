@@ -1,0 +1,48 @@
+name: Daily Canvas reminder
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+      timezone: "America/Sao_Paulo"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-canvas
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Schedules stay inactive until explicitly enabled in repository Variables.
+    if: github.event_name == 'workflow_dispatch' || vars.CANVAS_DAILY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      UV_PYTHON: "3.12"
+      CANVAS_API_URL: ${{ vars.CANVAS_API_URL || 'https://pucminas.instructure.com/api/v1' }}
+      CANVAS_API_TOKEN: ${{ secrets.CANVAS_API_TOKEN }}
+      CANVAS_TIMEZONE: ${{ vars.CANVAS_TIMEZONE || 'America/Sao_Paulo' }}
+      CANVAS_READ_ONLY: "true"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install uv==0.11.19
+      - run: uv sync --locked --no-dev
+      - name: Read deadlines and optionally notify Telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          reminder_args=()
+          if [[ -n "$TELEGRAM_BOT_TOKEN" || -n "$TELEGRAM_CHAT_ID" ]]; then
+            reminder_args+=(--telegram)
+          fi
+          uv run --locked --no-dev canvas-weekly-check --all-courses \
+            --output .local/weekly-report.json "${reminder_args[@]}"
+      # Academic data stays on this ephemeral runner; no public report artifact.
