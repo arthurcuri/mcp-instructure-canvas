@@ -19,8 +19,9 @@ comando local sem precisar de outro repo; versionar o script aqui facilita sua m
 
 Nenhum job é instalado durante `uv sync`, o registro do MCP ou os testes. Os
 modelos locais executam a checagem; acrescentar `--telegram` habilita o envio ao
-chat configurado. O resumo e a espera por mensagens não iniciam IA; o agente
-opcional só recebe uma tarefa quando você envia um pedido ao bot.
+chat configurado. O resumo e a espera por mensagens não iniciam IA. Em modo
+manual, o agente aguarda seu pedido; `CANVAS_AGENT_AUTO=true` autoriza o
+trabalhador local a preparar e enviar atividades disponíveis.
 
 ## 1. Testar antes de agendar
 
@@ -296,3 +297,29 @@ Use `/help` no bot para comandos; aprovações expiram em 15 minutos. Tarefas
 Codex são interrompidas após 30 minutos; para continuar, envie novo pedido.
 Falhas não repetem automaticamente uma solicitação do agente ou uma entrega.
 Preparar arquivos não autoriza submetê-los ao Canvas: peça a entrega explicitamente.
+
+## 7. Trabalhador automático opcional
+
+`CANVAS_AGENT_AUTO=false` é o padrão. Com `true` e `CANVAS_READ_ONLY=false`,
+`canvas-agent start` também instala no Mac um job local às 08h, no fuso do sistema,
+para o provedor selecionado. O GitHub continua enviando somente o resumo, sem IA.
+Após mudar o `.env`, pare/inicie para atualizar a cópia privada usada pelo serviço.
+
+```sh
+uv run canvas-agent auto-run --provider codex
+# ou: uv run canvas-agent auto-run --provider claude
+```
+
+O comando respeita a chave; `false` encerra sem chamadas de modelo/Canvas.
+`true` procura todas as atividades pendentes abertas de matérias ativas, inclusive
+sem prazo, e processa sequencialmente entregas de texto, arquivo ou URL. Quizzes,
+ferramentas externas, atividades em papel e indisponíveis não são automatizados.
+Dados ausentes ou permissões extras negadas exigem atenção; não são inventados.
+
+O ledger privado em `.local/agent-auto/ledger.json` registra a tentativa antes do
+trabalho. O código confirma a submissão por uma leitura independente da API.
+Itens já tentados, inclusive falhas, não são repetidos automaticamente. Confira o
+Canvas e peça continuação pelo bot quando necessário. O trabalhador usa quota
+da assinatura e precisa do computador ligado; no Linux, agende o comando acima.
+No Claude, a execução automática é uma sessão `-p`, separada do receptor Channels.
+Veja [modo automático e custos no README](../README.md#modo-manual-ou-automático).

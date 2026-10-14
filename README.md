@@ -1,40 +1,71 @@
-# MCP Instructure Canvas
+<p align="center">
+  <img src="docs/assets/overview.svg" alt="Canvas MCP — acesso ao Canvas, lembretes e agente" width="100%" />
+</p>
 
-Servidor MCP **local, com leitura, escrita e envio de atividades**, para a API
-oficial do Canvas LMS. O catálogo embarcado cobre **1.118 operações REST em 144
-grupos**, com ferramentas adicionais para GraphQL e transferência de arquivos.
-Pode ser conectado a Claude Code,
-Codex, Gemini CLI, Cursor, Kiro ou outro cliente com suporte a MCP por `stdio`.
-A URL é configurável; o exemplo usa a instância da PUC Minas.
+<p align="center">
+  <a href="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml"><img src="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e" alt="Licença MIT" /></a>
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab" alt="Python 3.11 ou superior" />
+  <img src="https://img.shields.io/badge/MCP-stdio-8b5cf6" alt="MCP local por stdio" />
+</p>
 
-## Como funciona e por que não precisa de deploy
+# Canvas MCP
 
-```text
-Cliente de IA → processo MCP no seu computador → API HTTPS do Canvas
+**Acesse seu Canvas pelo assistente, receba prazos no Telegram e peça ajuda com atividades.**
+Um único repositório reúne três funcionalidades independentes. A instância é
+configurável; os exemplos usam o Canvas da PUC Minas.
+
+| Funcionalidade | O que faz | Onde executa | Consome quota de IA? |
+|---|---|---|---|
+| **1 · MCP do Canvas** | Consulta matérias, lê enunciados e acessa a API para editar/enviar | Seu cliente inicia o processo local | O MCP não; o assistente que usa as ferramentas pode consumir |
+| **2 · Lembretes** | Envia ao Telegram as atividades dos próximos sete dias | GitHub Actions, diário às **08h São Paulo** | **Não** |
+| **3 · Agente** | Conversa pelo bot, prepara trabalhos e envia quando autorizado; modo automático opcional | Codex ou Claude Code no seu computador | **Sim, pela assinatura do agente** |
+
+> **Escolha seu caminho:** apenas Canvas no assistente → funcionalidade 1.
+> Apenas alertas → funcionalidade 2. Conversar ou automatizar trabalhos → funcionalidade 3.
+> Você pode combinar as três; instalar o projeto não ativa jobs nem resolve atividades.
+
+## Navegação
+
+[Instalação e token](#instalação-e-token) · [MCP e clientes](#1--mcp-do-canvas) ·
+[Lembretes das 08h](#2--lembretes-no-telegram) · [Agente Codex/Claude](#3--agente-para-atividades) ·
+[Modo automático](#modo-manual-ou-automático) · [Conectar sua conta/chat](#como-meu-chat-e-minha-conta-se-conectam) ·
+[Solução de problemas](#solução-de-problemas) · [Desenvolvimento](#desenvolvimento-com-agentes-de-ia)
+
+## Arquitetura e deploy
+
+```mermaid
+flowchart LR
+  Client["Seu assistente"] --> MCP["MCP local · stdio"]
+  MCP --> Canvas["API HTTPS do Canvas"]
+  Actions["GitHub Actions · 08h"] --> Canvas
+  Actions --> Bot["Seu bot Telegram"]
+  Bot --> Agent["Agente local · Codex ou Claude"]
+  Agent --> MCP
+  Agent --> Bot
+  Auto["Automático opcional · 08h no Mac"] --> Agent
 ```
 
-O cliente executa `canvas-mcp-server` automaticamente e conversa com ele por
-`stdio`, usando a entrada e a saída do processo. O servidor consulta o Canvas
-com seu token pessoal. Não abre uma porta HTTP nem precisa receber conexões
-pela internet. Assim, para uso local, você instala e configura uma vez; não
-precisa publicar o projeto nem manter um terminal rodando o servidor.
+O MCP roda como um processo iniciado pelo cliente: não abre uma porta pública.
+O agendamento na nuvem inicia um runner temporário, lê o Canvas, envia o resumo e
+encerra. O agente roda localmente. **Esses três fluxos não exigem deploy de um servidor MCP.**
 
-O GitHub guarda o código e executa os testes de CI. Fazer push **não coloca o MCP
-em funcionamento na nuvem**. O servidor acompanha o uso do cliente local.
-O computador precisa estar disponível, com acesso à internet e um token válido.
-Os clientes documentam esse transporte: [Claude Code](https://code.claude.com/docs/en/mcp#option-3-add-a-local-stdio-server)
-e [Codex](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+| Situação | Precisa do computador ligado? | Precisa deixar um chat/Terminal aberto? |
+|---|---|---|
+| MCP em Codex, Claude Code, Claude Desktop ou IDE | Sim, durante o uso local | O cliente inicia o MCP |
+| Lembrete pelo GitHub Actions | Não | Não |
+| Receptor Codex instalado com `canvas-agent start` no Mac | Sim, com sessão iniciada e internet | Não: usa um LaunchAgent |
+| Claude Channels em segundo plano | Sim | A sessão precisa continuar disponível; veja fixação abaixo |
+| Trabalhador automático local | Sim | No Mac, o agendador inicia o processo |
 
-Para um cliente que só conecta a endpoints remotos, seria necessária outra
-implementação, com transporte HTTP, hospedagem e autenticação do MCP. Essa opção
-não faz parte deste servidor local. A URL da API Canvas é a origem dos dados,
-não um endereço onde este MCP está hospedado.
+O horário do GitHub Actions pode atrasar; não é um alarme com minuto garantido.
+Um computador dormindo/desligado não responde pelo agente. Para clientes que
+exigem uma URL remota, seria necessário hospedar e autenticar outro transporte;
+esta versão fornece MCP local por stdio.
 
-A checagem semanal também pode rodar no GitHub Actions: ele inicia um processo
-temporário, consulta a API e encerra. Isso funciona com o Mac desligado e não
-exige publicar um servidor MCP. Veja o [guia do agendamento](automation/README.md#5-github-actions-sem-o-mac-ligado).
+## Instalação e token
 
-## 1. Obter um token pessoal do Canvas
+### Obter um token pessoal do Canvas
 
 Este fluxo serve para seu próprio protótipo local. O token usa as permissões da
 sua conta; não é uma chave de API da Anthropic ou da OpenAI.
@@ -58,12 +89,12 @@ com uma chave de desenvolvedor fornecida pelo administrador. Este projeto ainda
 não implementa OAuth; cada instalação pessoal mantém suas próprias credenciais.
 Veja [autenticação oficial](https://developerdocs.instructure.com/services/canvas/oauth2/file.oauth).
 
-## 2. Instalar o projeto
+### Instalar o projeto
 
 Os comandos abaixo são para macOS/Linux. É necessário Git e Python 3.11+.
 O projeto usa Python 3.12 por padrão, que o uv pode instalar automaticamente.
 
-### Instalar o uv
+#### Instalar o uv
 
 No macOS com Homebrew:
 
@@ -74,7 +105,7 @@ uv --version
 
 Para outros métodos, consulte a [instalação oficial do uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-### Clonar e instalar as dependências
+#### Clonar e instalar as dependências
 
 ```sh
 git clone https://github.com/arthurcuri/mcp-instructure-canvas.git
@@ -85,7 +116,7 @@ uv sync --locked
 Se o projeto já estiver clonado, abra seu diretório e execute apenas `uv sync --locked`.
 O uv cria `.venv/` e instala as versões de `uv.lock`.
 
-### Preparar a configuração privada
+#### Preparar a configuração privada
 
 Crie o arquivo somente se ele ainda não existir:
 
@@ -106,7 +137,8 @@ valor pelo comando de registro do MCP nem o publique em configurações de clien
 | `CANVAS_TIMEZONE` | Fuso dos prazos; padrão `America/Sao_Paulo` |
 | `CANVAS_TOKEN_EXPIRES_AT` | Opcional: anotação privada da validade em `YYYY-MM-DD`; não altera a validade no Canvas |
 | `CANVAS_READ_ONLY` | `false` por padrão habilita escrita; `true` oculta ferramentas de escrita e bloqueia mutações no cliente HTTP |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Opcionais: usados somente quando a checagem recebe `--telegram` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Necessários para os lembretes e o agente pelo bot |
+| `CANVAS_AGENT_AUTO` | **`false` por padrão:** aguarda seu pedido. **`true`:** autoriza o trabalhador local a preparar e enviar atividades pendentes |
 
 Exemplo de identificação: em `https://canvas.example.edu/courses/12345`, o curso
 é `12345`. Sem um curso padrão, informe `course_id` nas ferramentas de uma matéria
@@ -115,7 +147,7 @@ ou use `all_courses=true` na consulta de prazos.
 Variáveis do processo prevalecem sobre o arquivo. O parâmetro `--env-file` permite
 usar um caminho explícito, evitando depender do diretório em que o cliente abriu.
 
-### Verificar o acesso
+#### Verificar o acesso
 
 ```sh
 uv run canvas-mcp-server --test
@@ -126,7 +158,13 @@ uv run canvas-mcp-server --config
 `--config` mostra a configuração sem exibir o token. Ambos encerram após a consulta.
 O token e qualquer anotação pessoal permanecem em arquivos ignorados.
 
-## 3. Conectar a um cliente MCP
+## 1 · MCP do Canvas
+
+<a id="3-conectar-a-um-cliente-mcp"></a>
+
+São **18 ferramentas MCP**, com catálogo embarcado de **1.118 operações REST em
+144 grupos**, mais GraphQL e transferência de arquivos. O token mantém as permissões
+da sua conta: recursos de professor/administrador exigem esses papéis no Canvas.
 
 Os clientes usam o **mesmo servidor e as mesmas ferramentas**. Seus arquivos
 de instruções ajudam o agente a trabalhar neste repositório; a configuração MCP
@@ -227,7 +265,7 @@ Claude Code e Codex foram verificados nesta instalação. Os modelos dos demais
 clientes seguem suas documentações oficiais; suas interfaces não fazem parte
 dos testes automatizados deste repositório.
 
-## 4. Usar o Canvas pelo assistente
+### Usar o Canvas pelo assistente
 
 Depois de conferir o MCP no seu cliente, faça perguntas como:
 
@@ -256,7 +294,7 @@ omitem descrições; o assistente pode usar a ferramenta de detalhes quando prec
 retornado pela listagem de páginas ou módulos. As consultas de detalhes devolvem
 todo o texto, com links e descrições de imagens, sem baixar os anexos.
 
-### Como os prazos são interpretados
+#### Como os prazos são interpretados
 
 - `period="this_week"`: segunda-feira às 00h até a próxima segunda-feira às 00h,
   com início incluído e fim excluído, no fuso configurado. Inclui prazos que já
@@ -269,7 +307,7 @@ todo o texto, com links e descrições de imagens, sem baixar os anexos.
 - Atividades sem prazo entram em `undated_count`, sem serem colocadas artificialmente no período.
 - `missing` e `late` vêm do Canvas, sem inferência apenas porque uma data passou.
 
-### Acessar a API completa, incluindo escrita
+#### API completa, incluindo escrita
 
 Além das oito consultas acima, o MCP oferece dez ferramentas:
 
@@ -309,267 +347,277 @@ de aplicação implementado. Processos com várias etapas continuam exigindo os
 parâmetros e a sequência da documentação oficial. Os testes de escrita usam HTTP
 simulado; operações destrutivas não são testadas na sua conta.
 
-## 5. Preparar a checagem semanal no mesmo repositório
+## 2 · Lembretes no Telegram
 
-O agendamento não precisa de outro repositório. Um cron pode executar qualquer
-comando local; mantemos o código e os modelos em [automation/](automation/README.md)
-para permitir manutenção e reprodução pelos desenvolvedores.
+<a id="5-preparar-a-checagem-semanal-no-mesmo-repositório"></a>
 
-**Estado:** a consulta semanal, o relatório privado e o envio opcional ao Telegram
-estão implementados. Há modelos locais e workflows do GitHub Actions no mesmo
-repositório, com frequências semanal e diária. O agente opcional recebe pedidos
-no Telegram usando Codex com ChatGPT ou Claude Code com sua assinatura.
-Nenhum job é ativado pela instalação, pelo registro do MCP ou pelos testes.
+O resumo mostra **matéria, atividade, prazo local e link**, além da contagem de
+atividades sem prazo. O diário consulta os próximos sete dias em todas as matérias
+ativas. Ele lê a API diretamente: não precisa de um cliente MCP aberto nem usa IA.
 
-### Testar a checagem
+### Criar o bot e descobrir seu chat
 
-```sh
-uv run canvas-weekly-check --output .local/weekly-report.json
-bash automation/run_weekly.sh
-```
+1. Abra [@BotFather](https://t.me/BotFather) no Telegram e envie `/newbot`.
+2. Escolha nome/username e salve o token em `TELEGRAM_BOT_TOKEN` no `.env` privado.
+3. Abra seu novo bot e envie `/start`. Antes de ligar um receptor, esse comando
+   não produz resposta: ele permite descobrir a conversa.
+4. Com **nenhum outro receptor/webhook usando o bot**, execute:
 
-O padrão consulta o curso do `.env` nos próximos sete dias. Para todas as matérias:
+   ```sh
+   uv run canvas-telegram-chats --env-file .env
+   ```
 
-```sh
-bash automation/run_weekly.sh --all-courses
-```
+5. Copie o ID da sua conversa privada para `TELEGRAM_CHAT_ID` no `.env`.
+   Se aparecerem vários IDs, confirme qual pertence a você.
+6. Teste um envio explícito:
 
-O relatório fica na pasta privada `.local/`, ignorada pelo Git, com permissão `600`.
-Esse comando reutiliza a API do Canvas diretamente e não depende de uma sessão
-MCP aberta. Não chama modelos e não consome tokens de IA. Se a consulta falhar,
-o relatório anterior permanece intacto; verifique `checked_at` antes de utilizá-lo.
+   ```sh
+   bash automation/run_weekly.sh --all-courses --telegram
+   ```
 
-Depois de configurar o bot conforme [automation/README.md](automation/README.md#telegram-configurar-o-bot),
-um envio manual usa:
+Sem `--telegram`, o comando apenas salva `.local/weekly-report.json`, privado.
+O comando de descoberta não deve rodar enquanto Codex/Claude estiver consumindo
+updates. Use **um bot pessoal e um único receptor**.
 
-```sh
-bash automation/run_weekly.sh --all-courses --telegram
-```
+### Agendar no GitHub Actions
 
-Sem `--telegram`, o comando apenas gera o relatório. A mensagem lista atividades,
-prazos e links e pergunta se você quer ajuda. Com o receptor da seção 6 ativo,
-você pode responder com o nome ou link da atividade e o pedido de ajuda.
+| Frequência | Workflow | Horário | Variável |
+|---|---|---|---|
+| **Diária** | [daily-canvas.yml](.github/workflows/daily-canvas.yml) | **08h, America/Sao_Paulo** | `CANVAS_DAILY_ENABLED=true` |
+| Semanal opcional | [weekly-canvas.yml](.github/workflows/weekly-canvas.yml) | Segunda, 09h17 São Paulo | `CANVAS_WEEKLY_ENABLED=true` |
 
-### Agendar gratuitamente no GitHub Actions
+1. No GitHub, abra **Settings → Secrets and variables → Actions → Secrets**.
+2. Cadastre `CANVAS_API_TOKEN`, `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
+3. Em **Variables**, configure `CANVAS_API_URL` e `CANVAS_TIMEZONE` se precisar
+   mudar os padrões da PUC Minas/São Paulo.
+4. Em **Actions → Daily Canvas reminder → Run workflow**, faça um teste manual.
+5. Em **Variables**, ative `CANVAS_DAILY_ENABLED=true` e mantenha
+   `CANVAS_WEEKLY_ENABLED=false` para evitar dois resumos na segunda.
 
-O workflow [weekly-canvas.yml](.github/workflows/weekly-canvas.yml) está preparado
-para **segunda-feira às 09h17, no fuso de São Paulo**. O agendamento fica inativo
-até você criar a variável `CANVAS_WEEKLY_ENABLED=true` nas configurações do repo.
-Também é possível executar manualmente com **Actions → Weekly Canvas reminder → Run workflow**.
-
-Para receber **todos os dias às 08h00**, use
-[daily-canvas.yml](.github/workflows/daily-canvas.yml), escolha **Daily Canvas reminder**
-em Actions e ative `CANVAS_DAILY_ENABLED=true` em Variables após o teste manual.
-Os secrets são os mesmos; deixe `CANVAS_WEEKLY_ENABLED=false` para evitar duplicação
-na segunda-feira. Cada mensagem inclui as atividades pendentes dos próximos sete dias.
-
-1. Configure `CANVAS_API_TOKEN` em **Settings → Secrets and variables → Actions → Secrets**.
-2. Para enviar mensagens, configure também `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
-3. Faça uma execução manual e confira o resultado.
-4. Para o diário, ative `CANVAS_DAILY_ENABLED=true` e deixe
-   `CANVAS_WEEKLY_ENABLED=false` em **Variables**. Para o semanal, faça o inverso.
-
-Não envie o arquivo `.env` ao GitHub: cadastre apenas as credenciais necessárias
-como secrets. O job consulta todas as matérias, força somente leitura e não
-publica o relatório como artifact. Sua saída mostra contagens, sem descrições.
-O push não configura secrets. Se o `.env` já estiver preenchido e o GitHub CLI
-autenticado, este comando cadastra somente os três secrets necessários e ativa
-o diário; os valores são enviados por stdin, sem aparecer nos argumentos:
+Com o `.env` pronto e GitHub CLI autenticado, este comando realiza a configuração:
 
 ```sh
 gh auth login
 uv run python automation/configure_github.py --repo SEU_USUARIO/SEU_REPOSITORIO --activate
 ```
 
-Sem `--activate`, ele apenas cadastra secrets e as variáveis de URL e fuso.
+Ele envia somente os três secrets por stdin e configura URL/fuso. Sem `--activate`,
+não muda as variáveis de ativação. O `.env` não é publicado no GitHub.
+Para desligar, defina `CANVAS_DAILY_ENABLED=false`.
 
-Neste repositório público, o runner padrão `ubuntu-latest` é gratuito conforme a
-[cobrança oficial do GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
-Não há chamadas a Claude/OpenAI neste job. Se acrescentar IA, o uso terá os custos
-ou limites do provedor. Em repositórios privados há uma cota dependente do plano
-(2.000 minutos/mês no GitHub Free); runners maiores são cobrados.
+**Custo:** os runners padrão usados aqui são gratuitos para repositórios públicos,
+conforme a [política do GitHub](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
+Repositórios privados têm a cota do plano; runners maiores podem ser cobrados.
+Este job não chama Claude/OpenAI. Ele força somente leitura e não publica dados
+acadêmicos como artifacts ou commits; os logs mostram contagens.
 
-O GitHub pode atrasar o horário e desativa schedules de repositórios públicos
-após 60 dias sem atividade. Veja os detalhes e a reativação no
-[guia de automação](automation/README.md#5-github-actions-sem-o-mac-ligado) e na
-[documentação de schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+O GitHub pode atrasar schedules e desativá-los após 60 dias sem atividade em repos
+públicos. Veja [schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+O [guia de automação](automation/README.md) também explica cron, launchd local,
+frequência semanal, logs e desativação.
 
-### Agendar no macOS com launchd
+## 3 · Agente para atividades
 
-1. Teste a checagem manual acima.
-2. Prepare uma configuração local; isso **não a ativa**:
+<a id="6-conversar-pelo-telegram-com-codex-ou-claude-code"></a>
 
-   ```sh
-   uv run python automation/prepare_launchd.py
-   plutil -lint .local/com.canvas-mcp.weekly.plist
-   ```
+O agente usa o MCP para ler enunciado, rubrica, anexos e status da sua entrega,
+prepara os arquivos e responde pelo bot. Trabalhos ficam em `.local/activities/`.
+A conversa aceita somente o dono da conversa privada configurada. O lembrete
+pode apontar outra matéria que o curso padrão: envie **nome ou link da atividade**.
 
-3. Revise a cópia em `.local/`: o modelo executa segunda-feira, 09h, no fuso do
-   macOS. Use `prepare_launchd.py --all-courses` para incluir todas as matérias.
-4. Quando quiser ativar a geração de relatórios locais:
+### Codex com assinatura ChatGPT
 
-   ```sh
-   mkdir -p "$HOME/Library/LaunchAgents"
-   cp .local/com.canvas-mcp.weekly.plist "$HOME/Library/LaunchAgents/com.canvas-mcp.weekly.plist"
-   launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.canvas-mcp.weekly.plist"
-   launchctl print "gui/$(id -u)/com.canvas-mcp.weekly"
-   ```
-
-5. Para uma execução imediata, use `launchctl kickstart "gui/$(id -u)/com.canvas-mcp.weekly"`.
-6. Para desativar e remover essa instalação:
-
-   ```sh
-   launchctl bootout "gui/$(id -u)/com.canvas-mcp.weekly"
-   rm "$HOME/Library/LaunchAgents/com.canvas-mcp.weekly.plist"
-   ```
-
-O guia [automation/README.md](automation/README.md) explica edição do horário,
-logs, atualização, requisitos do Mac e como usar `CANVAS_UV_BIN` se necessário.
-O Mac desligado não executa tarefas locais. O agendamento de calendário do launchd
-pode executar ao acordar de um período de sono; a consulta precisa de internet.
-
-### Alternativa com cron ou Claude Code
-
-Para cron, abra `crontab -e`, acrescente a linha de
-[automation/crontab.example](automation/crontab.example) com o caminho real e
-confira `crontab -l`. Preserve suas outras entradas. Para remover, apague somente
-essa linha. Use cron ou launchd para evitar duplicação.
-
-Também existem [tarefas persistentes no Claude Code Desktop](https://code.claude.com/docs/en/desktop-scheduled-tasks).
-O `/loop` da CLI depende de uma sessão em execução, conforme a
-[comparação oficial](https://code.claude.com/docs/en/scheduled-tasks).
-Para acrescentar envio aos modelos locais, siga o
-[guia de automação](automation/README.md).
-
-## 6. Conversar pelo Telegram com Codex ou Claude Code
-
-Há três processos independentes: o cliente inicia o **MCP local** quando precisa;
-o **GitHub Actions** envia o resumo diário às 08h sem IA; e o **receptor local**
-encaminha seus pedidos do Telegram ao agente escolhido. Tudo fica neste repo.
-Você não precisa fazer deploy do MCP ou manter um chat aberto para o receptor Codex.
-O Mac precisa estar ligado, com sua sessão iniciada e internet. Enquanto dorme ou
-está desligado, ele não responde; mensagens recentes serão lidas ao voltar.
-O lembrete na nuvem continua funcionando com o Mac desligado.
-
-Use apenas **um receptor por bot**. Pare o anterior antes de trocar de provedor.
-O receptor aceita somente a conversa privada de `TELEGRAM_CHAT_ID`, incluindo o
-ID do remetente. O bot é pessoal; outros alunos precisam da própria configuração.
-Os agentes consultam todas as matérias quando necessário e preparam arquivos em
-`.local/activities/`, ignorada pelo Git. Pedir ajuda ou resolver uma atividade não
-autoriza sua entrega: o agente recebe instruções para exigir um pedido explícito
-que identifique atividade e conteúdo aprovado antes de enviar ao Canvas.
-
-### Codex com assinatura ChatGPT (padrão)
-
-1. Instale o [Codex CLI](https://developers.openai.com/codex/cli/) e entre com ChatGPT:
+1. Instale [Codex CLI](https://developers.openai.com/codex/cli/).
+2. Entre com sua conta ChatGPT:
 
    ```sh
    codex login
    codex login status
    ```
 
-2. Conclua `uv sync --locked` e configure Canvas e Telegram no `.env`. Não precisa
-   de `OPENAI_API_KEY`. O receptor verifica a autenticação `chatgpt` e recusa API key.
-3. Prepare ou inicie o serviço no macOS:
+3. Conclua a instalação e o `.env` com Canvas/Telegram. O receptor recusa API key:
+   esse caminho usa autenticação ChatGPT gerenciada pelo Codex.
+4. No macOS, inicie e confira:
 
    ```sh
-   uv run canvas-agent prepare --provider codex
    uv run canvas-agent start --provider codex
    uv run canvas-agent status --provider codex
    ```
 
-   `start` instala um LaunchAgent somente desse projeto, sem credenciais no plist.
-   Ele inicia na sessão do macOS e reinicia em caso de falha. Não é necessário
-   deixar Terminal, ChatGPT ou um chat do Codex aberto. `prepare` monta a instalação
-   privada e suas dependências, sem ativar o receptor.
-   O runtime fica em `~/Library/Application Support/CanvasMCP/`, para que o launchd
-   possa iniciá-lo quando o checkout está em Documents/Desktop. Ele mantém uma
-   instalação local e uma cópia privada do `.env`, com permissão `600`; os links
-   em `.local/codex-agent/` e `.local/activities/` permitem ver estado e trabalhos
-   a partir do repo. O `.env` da raiz é a fonte de configuração. Após alterar código,
-   dependências ou credenciais, use `stop`, `uv sync --locked` e `start` para atualizar
-   essa instalação. Na primeira migração, diretórios anteriores são preservados
-   como backups privados em `.local/`. Isso não publica nem hospeda o projeto.
-4. No bot, envie `/start`, depois, por exemplo: `Explique a atividade deste link:
-   https://canvas.example.edu/courses/123/assignments/456`. Você também pode citar
-   a mensagem do lembrete ao responder. A conversa é retomada após reiniciar.
-5. Use `/status` para consultar, `/cancel` para interromper e `/reset` para uma
-   nova conversa. Quando aparecer um pedido de permissão, responda
-   `/approve CÓDIGO` ou `/deny CÓDIGO`; vale para aquela solicitação e expira em
-   15 minutos. Para uma pergunta estruturada, use `/answer CÓDIGO resposta`.
-6. Para parar e retirar o serviço, preservando histórico e arquivos:
+5. Envie `/start` ao bot e depois `Me explique a atividade deste link: ...`.
+   Você pode citar a mensagem do resumo ao responder. Arquivos pedidos podem
+   voltar como anexos. A entrada pelo bot é **texto**; áudio, imagens e arquivos
+   recebidos ainda não são interpretados pelo receptor Codex.
+6. Para parar, preservando conversa e arquivos:
 
    ```sh
    uv run canvas-agent stop --provider codex
    ```
 
-Em Linux ou para diagnosticar no Terminal, use `uv run canvas-agent run --provider codex`;
-esse processo precisa continuar rodando. Em outros sistemas, os comandos de
-serviço requerem adaptação ao supervisor local. O receptor usa o protocolo
-[Codex App Server](https://learn.chatgpt.com/docs/app-server) por stdio, sem porta
-pública. Esta integração depende da versão instalada; foi verificada com Codex
-CLI 0.162.1. Texto e arquivos solicitados chegam ao Telegram; entrada de anexos,
-áudio e imagens pelo bot ainda não é suportada no receptor Codex.
+`start` instala um LaunchAgent do projeto, ativo na sua sessão do macOS.
+O runtime privado fica em `~/Library/Application Support/CanvasMCP/`, para que
+launchd consiga iniciar projetos cujo checkout está em Documents/Desktop. Ele
+mantém dependências e uma cópia privada do `.env` com permissão `600`; links em
+`.local/` permitem acessar trabalhos, estado e ledger pelo repo. O `.env` da raiz
+é a fonte de configuração. `prepare` monta a instalação, **sem ativar jobs**.
+
+Depois de mudar código/credenciais/modo, faça `stop`, `uv sync --locked` e `start`
+para atualizar a cópia usada pelo serviço. No Linux ou para diagnóstico, use
+`uv run canvas-agent run --provider codex`: esse processo precisa continuar rodando;
+configure seu supervisor/cron separadamente. A integração usa
+[Codex App Server](https://learn.chatgpt.com/docs/app-server) por stdio e foi
+verificada com Codex CLI 0.162.1.
+
+| Comando no bot Codex | Efeito | Chama IA? |
+|---|---|---|
+| `/start`, `/help` | Ajuda | Não |
+| `/status` | Estado e permissões pendentes | Não |
+| `/cancel` | Interrompe o pedido ativo | Não inicia nova tarefa |
+| `/reset` | A próxima mensagem inicia outra conversa; preserva arquivos | Não |
+| `/approve CÓDIGO`, `/deny CÓDIGO` | Responde à permissão daquela operação | Não inicia nova tarefa |
+| `/answer CÓDIGO resposta` | Responde a uma pergunta estruturada | Continua a tarefa existente |
+| Texto com seu pedido | Inicia trabalho/conversa | **Sim** |
+
+Permissões expiram em 15 minutos e tarefas do receptor têm limite de 30 minutos.
+Uma conversa inicial sem histórico é recuperada automaticamente; conversas reais
+removidas não são descartadas silenciosamente. Requests interrompidos não são
+reexecutados ao reiniciar. A recuperação não repete entregas.
 
 ### Claude Code com assinatura Claude
 
 1. Instale Claude Code atualizado e [Bun](https://bun.sh/docs/installation).
-   Abra `claude` neste diretório, entre com `/login` usando sua assinatura e aceite
-   o diálogo de confiança do projeto. O receptor recusa autenticação por API key.
-2. Instale o plugin oficial neste projeto:
+2. Abra `claude` neste projeto, entre com `/login` usando sua assinatura e aceite
+   o diálogo de confiança do workspace.
+3. Instale o plugin oficial:
 
    ```sh
    claude plugin install telegram@claude-plugins-official --scope local
    ```
 
-3. Com o receptor Codex parado e o `.env` preenchido, execute:
+4. Pare o receptor Codex antes de usar o mesmo bot com Claude:
 
    ```sh
+   uv run canvas-agent stop --provider codex
    uv run canvas-agent start --provider claude
    uv run canvas-agent status --provider claude
    ```
 
-   Para executar em primeiro plano, use `uv run canvas-agent run --provider claude`.
-   O projeto gera configurações privadas de acesso e MCP em `.local/agent/`.
-   Como workers em segundo plano não encaminham qualquer variável do shell,
-   ele gera uma cópia privada apenas do token do Telegram no `.env` do plugin,
-   com permissão `600`. O `.env` da raiz continua sendo a fonte de configuração;
-   após trocar o token, pare e inicie o receptor para atualizar essa cópia.
-   O token do Canvas permanece somente no `.env` da raiz.
-4. Envie um pedido ao bot. As ferramentas de resposta e aprovação são as do plugin
-   oficial; siga os botões/instruções apresentados por ele. Para parar:
+5. Envie um pedido ao bot. Respostas e aprovações usam o plugin oficial;
+   siga os botões/instruções apresentados por ele.
+6. Para parar, use `uv run canvas-agent stop --provider claude`.
+   Em primeiro plano, use `uv run canvas-agent run --provider claude`.
 
-   ```sh
-   uv run canvas-agent stop --provider claude
-   ```
+**Channels precisa estar habilitado.** Em Team/Enterprise, o administrador deve
+permitir `channelsEnabled`. Esta conta Team bloqueou Channels; o receptor Claude
+não foi testado de ponta a ponta nesta conta. A implementação e os testes simulados
+estão disponíveis. Consulte [Channels](https://code.claude.com/docs/en/channels).
 
-Channels é uma funcionalidade em prévia. Em Team/Enterprise, um administrador
-precisa habilitar `channelsEnabled`; se a política bloquear, o status indica
-`blocked_by_organization`. Nesta conta Team, a conexão foi bloqueada por essa
-política; o fluxo de mensagens Claude não pôde ser verificado ao vivo.
-Veja [Channels](https://code.claude.com/docs/en/channels) e
-[sessões em segundo plano](https://code.claude.com/docs/en/agent-view).
-Sessões Claude ociosas podem ser encerradas pelo supervisor: para manter uma
-disponível, abra `claude agents` e fixe a sessão com `Ctrl+T`, conforme o guia oficial.
-O projeto não altera políticas da organização nem habilita bypass de permissões.
+Sessões Claude ociosas podem ser encerradas: abra `claude agents` e fixe a sessão
+com `Ctrl+T` para mantê-la disponível, conforme [agent view](https://code.claude.com/docs/en/agent-view).
+A preparação gera `.local/agent/`, incluindo uma cópia privada apenas do token
+Telegram no `.env` esperado pelo plugin. As configurações MCP apontam ao `.env`
+que contém o token Canvas. Após trocar credenciais, pare e inicie novamente.
 
-### Uso da assinatura e operação
+### Modo manual ou automático
 
-O resumo diário e a espera por mensagens não chamam modelos. Pedidos ao Codex
-consomem os limites da assinatura ChatGPT; pedidos ao Claude usam os limites da
-assinatura Claude, sem chave de API. Trabalhos longos, ferramentas e contexto
-podem consumir bastante quota. O Claude também pode gerar resumos de sessões
-em segundo plano conforme o funcionamento de seu supervisor.
-O bot não inicia uma atividade apenas porque ela apareceu no lembrete.
-Na primeira instalação do receptor Codex, pedidos antigos são descartados;
-envie `/start` novamente. Após uma falha, ele preserva a conversa e nunca repete
-automaticamente o pedido interrompido. Confira uma entrega no Canvas antes de
-pedir para repeti-la. Envios ao Telegram também não são repetidos automaticamente.
+```dotenv
+# Padrão: só inicia uma resolução quando você pede; envio exige pedido explícito.
+CANVAS_AGENT_AUTO=false
 
-Logs e estado ficam em `.local/codex-agent/` ou `.local/agent/`. Se o login expirar,
-pare o receptor, renove o login pelo cliente e inicie novamente. Nunca envie esses
-arquivos ou o `.env` ao Telegram. Os comandos de instalação não ativam serviços;
-`canvas-agent start` e `configure_github.py --activate` são as ações explícitas de ativação.
+# Alternativa: autoriza o trabalhador local a resolver E enviar sem confirmação.
+# CANVAS_AGENT_AUTO=true
+```
+
+| Comportamento | `false` · manual | `true` · automático |
+|---|---|---|
+| Resumo diário no GitHub | Continua independente, sem IA | Continua independente, sem IA |
+| Trabalho no bot | Aguarda seu pedido | Você pode continuar conversando normalmente |
+| Trabalhador local às 08h | Desativado | Procura atividades pendentes e disponíveis |
+| Confirmação de resolução/entrega no trabalhador | Você escolhe o trabalho e pede o envio | A configuração é autorização prévia: prepara e envia |
+| Quota do agente | Consome ao conversar/pedir trabalho | Consome também nas tarefas automáticas |
+| Falta de dados, limite ou permissão | O agente pode perguntar | Registra necessidade de atenção; não envia conteúdo inventado |
+
+**Para ativar:** edite o `.env`, use `CANVAS_AGENT_AUTO=true`, confirme que
+`CANVAS_READ_ONLY=false`, pare e inicie o agente com o provedor escolhido.
+No Mac, `start` instala também o trabalhador diário das **08h no fuso do macOS**.
+Ele usa a mesma assinatura do provedor; pode trabalhar sem o receptor do bot,
+pois somente envia mensagens e não disputa `getUpdates`.
+Para desligar, volte a `false` e faça `stop`/`start`.
+
+Execução manual do trabalhador, respeitando a chave:
+
+```sh
+uv run canvas-agent auto-run --provider codex
+# ou
+uv run canvas-agent auto-run --provider claude
+```
+
+Com `false`, esses comandos encerram sem consultar atividades nem chamar modelos.
+No Linux, agende esse comando em seu cron/supervisor às 08h; ele não é instalado
+automaticamente. Ajuste o fuso do sistema para o horário esperado. O fuso do
+relatório (`CANVAS_TIMEZONE`) não muda o relógio do agendador local.
+
+O trabalhador verifica **todas as matérias ativas**, com prazos futuros, sem
+prazo ou vencidos enquanto a entrega ainda estiver disponível. Processa tarefas
+sequencialmente e suporta entregas de **texto, arquivo ou URL**. Tipos de prova,
+ferramentas externas, atividades em papel e tarefas bloqueadas são excluídos.
+Dados empíricos, entrevistas e informações pessoais ausentes não são inventados.
+Um trabalho incompleto ou uma permissão adicional negada exige atenção.
+
+Cada tentativa é registrada antes de iniciar em `.local/agent-auto/ledger.json`.
+Após o trabalho, o código consulta novamente a submissão do usuário no Canvas:
+o texto do modelo não é prova de entrega. Tarefas tentadas, incluindo falhas ou
+interrupções, não são repetidas automaticamente. Confira o resultado no Canvas;
+para continuar uma que exige atenção, envie um pedido explícito pelo bot.
+Permissões gerais e limites do cliente continuam valendo; o modo não habilita
+bypass nem escrita fora do trabalho autorizado. O código de envio é testado com
+HTTP/modelos simulados, sem entregar trabalhos reais para validar setup.
+
+No Codex, o trabalhador usa uma conversa própria por atividade. No Claude, ele
+executa uma sessão local `-p` com login da assinatura, Canvas MCP e sem prompts
+interativos: permissões extras são negadas. Esse job de saída é independente do
+Channels; receber mensagens pelo bot Claude continua exigindo Channels habilitado.
+Não são usadas chaves de API OpenAI/Anthropic neste fluxo.
+
+### Como meu chat e minha conta se conectam?
+
+| O que você quer | Como conectar |
+|---|---|
+| Canvas direto no Codex/Claude Code | Registre o MCP na funcionalidade 1 e abra uma nova sessão |
+| Conversar com o agente pelo Telegram | Faça login no CLI e execute `canvas-agent start --provider ...` |
+| Usar Claude Desktop com Canvas | Configure o MCP local conforme o exemplo/guia do Desktop |
+| Reutilizar o histórico deste chat no bot | Ele mantém outra conversa; envie ao bot o contexto necessário |
+| Usar apenas navegador/celular com um cliente que exige URL de MCP | Precisa de uma integração remota própria; este servidor é stdio local |
+
+O bot usa **a conta autenticada no CLI da máquina**. Ele não se conecta a uma aba
+já aberta do ChatGPT/Claude, nem importa seu histórico. O Codex cria e retoma sua
+própria conversa pelo App Server; Claude Channels mantém a sessão Claude Code.
+Depois de instalar, autenticar e iniciar, o receptor lê novas mensagens sozinho.
+Trocar a conta exige parar o serviço, renovar o login no CLI e iniciar novamente.
+As [documentações de autenticação Codex](https://learn.chatgpt.com/docs/auth) e
+[Claude Code](https://code.claude.com/docs/en/authentication) explicam os logins.
+
+## Solução de problemas
+
+| Sintoma | Verificação/ação |
+|---|---|
+| “Pedido não iniciado” na versão anterior | Atualize o repo, instale dependências e faça `stop`/`start`. Conversas iniciais sem rollout agora são recuperadas |
+| Conversa real removida | `/reset` inicia outra; preserva trabalhos. Não repita uma entrega sem conferir o Canvas |
+| Bot não responde a `/start` | Inicie o receptor; confirme `canvas-agent status`, chat privado, Mac/internet e apenas um consumidor |
+| Telegram HTTP 409 | Outro poller ou webhook disputa o bot; pare o concorrente |
+| Canvas 401/403 | Confira validade do token/permissões institucionais e rode `canvas-mcp-server --test` |
+| Claude `blocked_by_organization` | Administrador deve habilitar Channels. Use um provedor permitido |
+| Modo mudou mas serviço continua igual | Pare/inicie para atualizar a cópia privada do `.env` |
+| Automático não inicia | `CANVAS_AGENT_AUTO=true`, `CANVAS_READ_ONLY=false`, login válido, job instalado e fuso do macOS |
+| “needs_attention” no ledger | Consulte o motivo e o Canvas; complete dados/solicite continuação explicitamente |
+| Login/quota expirou | Pare, renove o login do CLI e inicie; os limites continuam sendo os da assinatura |
+| GitHub deixou de enviar | Confira Actions, secrets, variável de ativação e desativação por inatividade |
+
+Logs/estado ficam em `.local/codex-agent/`, `.local/agent/` e `.local/agent-auto/`.
+Essas pastas e o `.env` são privados/ignorados. Na primeira instalação, mensagens
+antigas são descartadas; envie `/start` de novo. O Telegram conserva updates por
+período limitado, portanto indisponibilidade prolongada pode perder mensagens.
+O envio ao Telegram não é repetido automaticamente após uma falha de transporte.
 
 ## Desenvolvimento com agentes de IA
 

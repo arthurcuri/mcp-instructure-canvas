@@ -5,9 +5,32 @@ import json
 import os
 from pathlib import Path
 
+from canvas_mcp import __version__
+
 
 class CodexError(ValueError):
     """Safe errors; never forward raw provider output or authenticated URLs."""
+
+    def __init__(self, message: str, *, category: str = "provider_error"):
+        super().__init__(message)
+        self.category = category
+
+    @classmethod
+    def from_response(cls, error: dict) -> "CodexError":
+        message = str(error.get("message", "")).lower()
+        # Classify known failures locally; neither the original message nor data is exposed.
+        if "no rollout found" in message or "thread not found" in message:
+            return cls(
+                "A conversa não tem histórico disponível no Codex.", category="thread_missing"
+            )
+        if any(word in message for word in ("unauthorized", "not logged in", "authentication")):
+            return cls("Renove o login do Codex com ChatGPT.", category="authentication")
+        if "required" in message and "mcp" in message:
+            return cls(
+                "O MCP obrigatório não iniciou; confira a instalação e o Canvas.",
+                category="mcp_unavailable",
+            )
+        return cls("Codex recusou a operação solicitada.")
 
 
 class CodexRPC:
@@ -43,7 +66,7 @@ class CodexRPC:
                 "clientInfo": {
                     "name": "canvas_telegram",
                     "title": "Canvas Telegram",
-                    "version": "0.3.0",
+                    "version": __version__,
                 },
                 "capabilities": {"experimentalApi": True},
             },
@@ -87,7 +110,7 @@ class CodexRPC:
                     await self.events.put(message)
                 elif (future := self.pending.get(message.get("id"))) and not future.done():
                     if "error" in message:
-                        future.set_exception(CodexError("Codex recusou a operação solicitada."))
+                        future.set_exception(CodexError.from_response(message["error"]))
                     else:
                         future.set_result(message.get("result") or {})
         except (ValueError, OSError):

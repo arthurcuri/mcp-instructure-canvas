@@ -94,6 +94,30 @@ async def test_restart_resumes_history_without_starting_a_new_thread(bridge):
     assert bridge.rpc.request.call_count == 1
 
 
+async def test_an_unused_thread_without_rollout_recovers_without_reset(bridge):
+    bridge.save(thread_id="reserved-but-empty")
+    bridge.rpc.request.side_effect = [
+        CodexError("No saved history", category="thread_missing"),
+        {"thread": {"id": "fresh"}},
+    ]
+    assert await bridge.thread() == "fresh"
+    assert [call.args[0] for call in bridge.rpc.request.call_args_list] == [
+        "thread/resume",
+        "thread/start",
+    ]
+    assert bridge.state["recovered_empty_thread"] is True
+
+
+@pytest.mark.parametrize("state", [{"has_turns": True}, {"in_progress": True}])
+async def test_missing_real_or_uncertain_history_is_never_silently_replaced(bridge, state):
+    bridge.save(thread_id="real-history", **state)
+    bridge.rpc.request.side_effect = CodexError("Missing", category="thread_missing")
+    with pytest.raises(CodexError):
+        await bridge.thread()
+    assert bridge.rpc.request.call_count == 1
+    assert bridge.state["thread_id"] == "real-history"
+
+
 async def test_approval_requires_matching_code_and_never_grants_session_wide_rules(bridge):
     bridge.save(thread_id="thread")
     bridge.turn_id = "turn"
@@ -149,6 +173,25 @@ async def test_an_old_turn_cannot_request_approval_in_a_new_turn(bridge):
     )
     assert not bridge.pending
     bridge.rpc.send.assert_awaited_once()
+    bridge.telegram._call.assert_not_called()
+
+
+async def test_automatic_worker_denies_extra_privileges_without_prompting_owner(bridge):
+    bridge.automated_task = True
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(
+        {
+            "id": 33,
+            "method": "item/permissions/requestApproval",
+            "params": {
+                "threadId": "thread",
+                "turnId": "turn",
+                "permissions": {"network": {"enabled": True}},
+            },
+        }
+    )
+    bridge.rpc.respond.assert_awaited_once_with(33, {"permissions": {}, "scope": "turn"})
     bridge.telegram._call.assert_not_called()
 
 

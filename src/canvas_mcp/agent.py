@@ -1,6 +1,7 @@
 """Control subscription-based Canvas agents: Codex bridge or official Claude Channels."""
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -9,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from canvas_mcp.agent_policy import AgentPolicy
+from canvas_mcp.client import CanvasError
 from canvas_mcp.config import Settings
 from canvas_mcp.notifications import TelegramSettings
 from canvas_mcp.weekly import save_report
@@ -258,7 +261,7 @@ class AgentManager:
             "--settings",
             str(self.directory / "settings.json"),
             "--append-system-prompt",
-            (self.project / "automation/agent_instructions.md").read_text(),
+            AgentPolicy.load(self.env_file).instructions(self.project),
         ]
         output = self.call(arguments, environment=self.environment())
         launched = re.search(r"backgrounded\s*·\s*([A-Za-z0-9-]+)", output)
@@ -329,7 +332,7 @@ class AgentManager:
                 "--settings",
                 str(self.directory / "settings.json"),
                 "--append-system-prompt",
-                (self.project / "automation/agent_instructions.md").read_text(),
+                AgentPolicy.load(self.env_file).instructions(self.project),
             ],
             self.environment(),
         )
@@ -340,13 +343,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Controlar o agente Canvas/Telegram com a assinatura do Codex ou Claude Code."
     )
-    parser.add_argument("action", choices=["prepare", "start", "status", "stop", "run"])
+    parser.add_argument("action", choices=["prepare", "start", "status", "stop", "run", "auto-run"])
     parser.add_argument("--provider", choices=["codex", "claude"], default="codex")
     parser.add_argument("--project-dir", type=Path, default=Path.cwd())
     parser.add_argument("--env-file", type=Path)
     args = parser.parse_args()
     try:
         from canvas_mcp.agent_runtime import CodexManager
+
+        if args.action == "auto-run":
+            from canvas_mcp.agent_auto import AutoRunner
+
+            runtime_manager = CodexManager(args.project_dir, args.env_file)
+            project = (
+                runtime_manager.runtime
+                if (runtime_manager.runtime / ".venv/bin/python").is_file()
+                else args.project_dir
+            )
+            result = asyncio.run(AutoRunner(project, runtime_manager.env_file, args.provider).run())
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
 
         manager = (
             CodexManager(args.project_dir, args.env_file)
@@ -367,12 +383,26 @@ def main() -> int:
                         "Pare o receptor Claude antes de iniciar Codex com o mesmo bot."
                     )
         result = getattr(manager, args.action)()
+        if args.provider == "claude" and args.action == "start":
+            from canvas_mcp.agent_auto import schedule
+
+            runtime_manager = CodexManager(args.project_dir, args.env_file)
+            if sys.platform == "darwin" and AgentPolicy.load(runtime_manager.env_file).automatic:
+                runtime_manager.install_runtime()
+            result["automatic_worker"] = schedule(
+                runtime_manager, "claude", runtime_manager.env_file
+            )
+        elif args.provider == "claude" and args.action == "stop" and sys.platform == "darwin":
+            runtime_manager = CodexManager(args.project_dir, args.env_file)
+            label = runtime_manager.label.replace(".codex-", ".auto-")
+            runtime_manager.launchctl(["bootout", f"gui/{os.getuid()}/{label}"], required=False)
+            runtime_manager.plist.with_name(label + ".plist").unlink(missing_ok=True)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
-    except (ValueError, OSError) as error:
+    except (CanvasError, ValueError, OSError) as error:
         message = (
             str(error)
-            if isinstance(error, ValueError)
+            if isinstance(error, (ValueError, CanvasError))
             else "Falha ao acessar a configuração local do agente."
         )
         print(message, file=sys.stderr)

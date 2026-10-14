@@ -10,6 +10,7 @@ import signal
 import time
 from pathlib import Path
 
+from canvas_mcp.agent_policy import AgentPolicy
 from canvas_mcp.codex_rpc import CodexError, CodexRPC
 from canvas_mcp.config import Settings
 from canvas_mcp.notifications import TelegramClient, TelegramError, TelegramSettings
@@ -39,6 +40,8 @@ class CodexBridge:
         self.state = load_state(self.state_path)
         self.settings = TelegramSettings.load(self.env_file)
         self.canvas = Settings.load(self.env_file)
+        self.policy = AgentPolicy.load(self.env_file)
+        self.automated_task = False
         if not self.settings.chat_id.isdecimal() or int(self.settings.chat_id) < 1:
             raise CodexError("O agente requer TELEGRAM_CHAT_ID da sua conversa privada.")
         self.telegram = TelegramClient(self.settings)
@@ -102,13 +105,17 @@ class CodexBridge:
     async def thread(self) -> str:
         if getattr(self, "thread_ready", False):
             return self.state["thread_id"]
-        prompt = (self.project / "automation/agent_instructions.md").read_text()
+        prompt = self.policy.instructions(self.project, automated_task=self.automated_task)
         parameters = {
             "cwd": str(self.project / ".local/activities"),
             "approvalPolicy": "on-request",
             "approvalsReviewer": "user",
             "sandbox": "workspace-write",
             "developerInstructions": prompt
+            + "\nThe coursework artifact root is "
+            + str(self.project / ".local/activities")
+            + ". The current cwd is that directory. References to .local/activities in shared "
+            "instructions mean this absolute root, not another nested .local/activities folder. "
             + "\nProvider: Codex. Your final response is delivered automatically to Telegram. "
             "To attach a requested coursework file, include [[arquivo: relative/path]] "
             "relative to .local/activities in your final response. Do not run Telegram commands. "
@@ -117,7 +124,22 @@ class CodexBridge:
         (self.project / ".local/activities").mkdir(parents=True, exist_ok=True, mode=0o700)
         if self.state.get("thread_id"):
             parameters.update(threadId=self.state["thread_id"], excludeTurns=True)
-            result = await self.rpc.request("thread/resume", parameters)
+            try:
+                result = await self.rpc.request("thread/resume", parameters)
+            except CodexError as error:
+                if (
+                    error.category != "thread_missing"
+                    or self.state.get("has_turns")
+                    or self.state.get("in_progress")
+                    or self.state.get("last_turn_status")
+                ):
+                    raise
+                # thread/start reserves an ID, but the rollout exists only after a first turn.
+                # Recover only an unused conversation; never discard real or uncertain history.
+                parameters.pop("threadId")
+                parameters.pop("excludeTurns")
+                result = await self.rpc.request("thread/start", parameters)
+                self.save(recovered_empty_thread=True)
         else:
             result = await self.rpc.request("thread/start", parameters)
         identifier = result["thread"]["id"]
@@ -162,7 +184,7 @@ class CodexBridge:
             if self.turn_id:
                 await self.reply("Use /cancel e aguarde o encerramento antes de /reset.")
             else:
-                self.save(thread_id=None)
+                self.save(thread_id=None, has_turns=False, last_turn_status=None)
                 self.thread_ready = False
                 await self.reply(
                     "A próxima mensagem iniciará uma nova conversa. Arquivos preservados."
@@ -190,6 +212,7 @@ class CodexBridge:
             },
         )
         self.turn_id = result["turn"]["id"]
+        self.save(has_turns=True, last_error=None)
         self.turn_started = time.monotonic()
         self.responses.clear()
         self.file_changes.clear()
@@ -205,6 +228,28 @@ class CodexBridge:
             await self.rpc.send(
                 {"id": event["id"], "error": {"code": -32602, "message": "Inactive conversation"}}
             )
+            return
+        if self.automated_task:
+            # Automatic coursework keeps ordinary sandbox boundaries. Extra privileges
+            # are denied, rather than silently approving arbitrary commands or access.
+            method = event["method"]
+            if method == "item/permissions/requestApproval":
+                result = {"permissions": {}, "scope": "turn"}
+            elif method == "item/tool/requestUserInput":
+                result = {"answers": {}}
+            elif method == "mcpServer/elicitation/request":
+                result = {"action": "decline"}
+            elif method in {
+                "item/fileChange/requestApproval",
+                "item/commandExecution/requestApproval",
+            }:
+                result = {"decision": "decline"}
+            else:
+                await self.rpc.send(
+                    {"id": event["id"], "error": {"code": -32601, "message": "Unsupported request"}}
+                )
+                return
+            await self.rpc.respond(event["id"], result)
             return
         code = secrets.token_hex(3)
         details = (
@@ -488,11 +533,16 @@ class CodexBridge:
                         self.save(offset=identifier + 1, telegram_status="connected")
                         try:
                             await self.handle_message(update.get("message") or {})
-                        except CodexError:
+                        except CodexError as error:
+                            self.save(last_error=error.category)
                             await self.reply(
-                                "Pedido não iniciado. Confira codex login e canvas-agent status; "
-                                "use /reset se a conversa antiga não puder ser retomada."
+                                "Não consegui confirmar o início do pedido. "
+                                + str(error)
+                                + " Confira canvas-agent status. "
+                                "Se a conversa com histórico foi removida, use /reset."
                             )
+                            if self.state.get("in_progress"):
+                                raise
                     else:
                         await self.handle_event(item["event"])
                 finally:

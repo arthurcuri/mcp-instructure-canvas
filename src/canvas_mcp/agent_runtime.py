@@ -40,7 +40,7 @@ class CodexManager:
         with os.fdopen(descriptor, "wb") as file:
             file.write(self.env_file.read_bytes())
         credential.chmod(0o600)
-        for name in ("codex-agent", "activities"):
+        for name in ("codex-agent", "activities", "agent-auto"):
             source = self.project / ".local" / name
             target = self.runtime / ".local" / name
             target.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -152,12 +152,16 @@ class CodexManager:
             self.launchctl(["kickstart", self.target])
         else:
             self.launchctl(["bootstrap", f"gui/{os.getuid()}", str(self.plist)])
+        from canvas_mcp.agent_auto import schedule
+
+        automatic = schedule(self, "codex", self.env_file)
         return {
             "started": True,
             "provider": "codex",
             **auth,
             "service": self.label,
             "check": "canvas-agent status",
+            "automatic_worker": automatic,
         }
 
     async def doctor(self) -> dict:
@@ -168,6 +172,8 @@ class CodexManager:
             await bridge.rpc.close()
 
     def status(self) -> dict:
+        from canvas_mcp.agent_policy import AgentPolicy
+
         state = load_state(self.directory / "state.json")
         running = False
         pid = state.get("pid")
@@ -195,6 +201,8 @@ class CodexManager:
             "telegram": state.get("telegram_status"),
             "conversation_exists": bool(state.get("thread_id")),
             "service": self.label,
+            "automatic": AgentPolicy.load(self.env_file).automatic,
+            "last_error": state.get("last_error"),
         }
 
     def stop(self) -> dict:
@@ -204,6 +212,9 @@ class CodexManager:
         if result.returncode and self.status()["running"]:
             raise CodexError("Não foi possível parar o receptor; confira seu serviço no launchd.")
         self.plist.unlink(missing_ok=True)
+        auto_label = self.label.replace(".codex-", ".auto-")
+        self.launchctl(["bootout", f"gui/{os.getuid()}/{auto_label}"], required=False)
+        self.plist.with_name(auto_label + ".plist").unlink(missing_ok=True)
         return {"stopped": True, "provider": "codex", "conversation_preserved": True}
 
     def run(self) -> dict:
