@@ -254,6 +254,12 @@ com horário garantido. Schedules usam a branch padrão e repositórios público
 podem ter o agendamento desativado após **60 dias sem atividade**.
 Veja a [documentação oficial](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
+O teste automático de 14/10/2026 expôs um atraso de quase cinco horas: o run foi
+criado às 12h43 e o Telegram confirmou o envio às 12h44, para um cron solicitado
+às 08h. [O registro](../docs/validation.md#pontualidade-do-agendamento) distingue
+consulta/envio bem-sucedidos de pontualidade não atendida. Alterar o fuso ou
+repetir um teste manual não resolve atraso do disparo na plataforma.
+
 Para desativar as consultas automáticas diárias, remova a variável ou defina
 `CANVAS_DAILY_ENABLED=false`; para o semanal, use `CANVAS_WEEKLY_ENABLED=false`.
 Para desativar um workflow inteiro, inclusive execuções manuais, use

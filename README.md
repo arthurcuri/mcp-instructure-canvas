@@ -24,7 +24,7 @@ configurável; os exemplos usam o Canvas da PUC Minas.
 | Funcionalidade | O que faz | Onde executa | Consome quota de IA? |
 |---|---|---|---|
 | **1 · MCP do Canvas** | Consulta matérias, lê enunciados e acessa a API para editar/enviar | Seu cliente inicia o processo local | O MCP não; o assistente que usa as ferramentas pode consumir |
-| **2 · Lembretes** | Envia ao Telegram as atividades dos próximos sete dias | GitHub Actions, diário às **08h São Paulo** | **Não** |
+| **2 · Lembretes** | Envia ao Telegram as atividades dos próximos sete dias | GitHub Actions, horário solicitado **08h São Paulo**, sujeito a atraso | **Não** |
 | **3 · Agente** | Conversa pelo bot, prepara trabalhos e envia quando autorizado; modo automático opcional | Codex ou Claude Code no seu computador | **Sim, pela assinatura do agente** |
 
 > **Escolha seu caminho:** apenas Canvas no assistente → funcionalidade 1.
@@ -64,7 +64,10 @@ encerra. O agente roda localmente. **Esses três fluxos não exigem deploy de um
 | Claude Channels em segundo plano | Sim | A sessão precisa continuar disponível; veja fixação abaixo |
 | Trabalhador automático local | Sim | No Mac, o agendador inicia o processo |
 
-O horário do GitHub Actions pode atrasar; não é um alarme com minuto garantido.
+O GitHub Actions pode atrasar ou descartar disparos; o cron define o horário
+solicitado, não uma garantia de entrega. Em 14/10/2026, o disparo das 08h foi
+criado às 12h43 e o Telegram confirmou o envio às 12h44. Um teste manual de envio
+não valida pontualidade. Veja o [registro e diagnóstico](docs/validation.md#pontualidade-do-agendamento).
 Um computador dormindo/desligado não responde pelo agente. Para clientes que
 exigem uma URL remota, seria necessário hospedar e autenticar outro transporte;
 esta versão fornece MCP local por stdio.
@@ -390,7 +393,7 @@ updates. Use **um bot pessoal e um único receptor**.
 
 | Frequência | Workflow | Horário | Variável |
 |---|---|---|---|
-| **Diária** | [daily-canvas.yml](.github/workflows/daily-canvas.yml) | **08h, America/Sao_Paulo** | `CANVAS_DAILY_ENABLED=true` |
+| **Diária** | [daily-canvas.yml](.github/workflows/daily-canvas.yml) | **08h solicitadas, America/Sao_Paulo**, sujeito a atraso | `CANVAS_DAILY_ENABLED=true` |
 | Semanal opcional | [weekly-canvas.yml](.github/workflows/weekly-canvas.yml) | Segunda, 09h17 São Paulo | `CANVAS_WEEKLY_ENABLED=true` |
 
 1. No GitHub, abra **Settings → Secrets and variables → Actions → Secrets**.

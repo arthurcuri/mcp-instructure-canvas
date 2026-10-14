@@ -49,6 +49,35 @@ Para o lembrete, execute **Daily Canvas reminder → Run workflow** no seu GitHu
 e confira o resumo recebido no Telegram. Isso envia uma mensagem real ao chat
 configurado; não chama um modelo.
 
+## Pontualidade do agendamento
+
+Em **14/10/2026**, o workflow configurado para as 08h de São Paulo foi criado
+às **12h43min55s**, e o Telegram confirmou o envio às **12h44min17s**. O evento
+registrado foi `schedule`, não `workflow_dispatch`. A criação tardia do run
+mostra que o disparo chegou depois do horário solicitado; depois de criado,
+o job iniciou em dois segundos e terminou com sucesso.
+
+Evidência: [execução automática atrasada](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38591893378).
+O log registrou somente contagens e a confirmação de uma mensagem; não houve
+falha registrada de autenticação Canvas ou Telegram nessa execução.
+
+O teste manual anterior comprovou consulta/envio, não pontualidade do cron.
+A execução automática confirmou o envio diário, com atraso; essa evidência
+não garante entrega pontual às 08h nas próximas execuções.
+O GitHub documenta que `schedule` pode atrasar ou perder disparos sob carga,
+especialmente no início da hora; o motivo específico deste atraso não aparece
+no histórico disponível. Veja [schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+Para inspecionar o disparo:
+
+```sh
+gh run list --workflow daily-canvas.yml --limit 10 \
+  --json databaseId,event,createdAt,startedAt,conclusion,url
+```
+
+Os timestamps da API estão em UTC; converta para o fuso escolhido no workflow.
+Um `workflow_dispatch` bem-sucedido não comprova que um `schedule` disparou no horário.
+
 ## O que esta validação não afirma
 
 - Não demonstra permissão para cada endpoint de professor/administrador: a conta
