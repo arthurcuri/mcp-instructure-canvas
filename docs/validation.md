@@ -15,11 +15,12 @@ contém tokens, IDs de chat, enunciados, nomes de alunos ou entregas pessoais.
 | Imagem MCP e distribuições | Versão, protocolo stdio, catálogo offline e ausência de arquivos privados | Passou em amd64 e arm64 pelo workflow de release |
 | MCP Docker → Canvas real | Mesmas leituras da instalação local, com o `.env` privado | Passou; prazos de todas as matérias coincidiram com o agente/lembrete |
 | Publicação GHCR | Consulta anônima ao manifest da imagem | Passou; download público sem autenticação |
+| Pacotes publicados 0.5.2 | Download do wheel/imagem, SHA256SUMS e consultas reais no Canvas | Passou; handshake anuncia 0.5.2 e os dois retornaram os mesmos prazos |
 
 Execução de lembrete validada:
 [Daily Canvas reminder](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38508719491).
 Release e testes dos pacotes:
-[Release and GitHub Packages](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38510052772).
+[Release and GitHub Packages 0.5.2](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38560983173).
 O workflow permanece diário, em `America/Sao_Paulo`; o semanal está desativado
 nesta instalação. O agendador pode atrasar, conforme as regras do GitHub Actions.
 
