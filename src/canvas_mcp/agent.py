@@ -339,67 +339,162 @@ class AgentManager:
         return {"started": True}
 
 
+def control(action: str, provider: str, project: Path, env_file: Path | None) -> dict:
+    """Explicit lifecycle operations; shared by advanced commands and reviewed setup."""
+    from canvas_mcp.agent_runtime import CodexManager
+
+    manager = (
+        CodexManager(project, env_file) if provider == "codex" else AgentManager(project, env_file)
+    )
+    if action in {"start", "run"}:
+        if provider == "claude" and CodexManager(project, env_file).status()["running"]:
+            raise AgentError(
+                "Codex está rodando. Use canvas-agent setup para revisar a troca de agente."
+            )
+        if provider == "codex" and shutil.which("claude"):
+            other = AgentManager(project, env_file).current()
+            if other and other.get("pid") and other.get("status") in {"busy", "waiting", "idle"}:
+                raise AgentError(
+                    "Claude está rodando. Use canvas-agent setup para revisar a troca de agente."
+                )
+    result = getattr(manager, action)()
+    if provider == "claude" and action == "start":
+        from canvas_mcp.agent_auto import schedule
+
+        runtime_manager = CodexManager(project, env_file)
+        if sys.platform == "darwin" and AgentPolicy.load(runtime_manager.env_file).automatic:
+            runtime_manager.install_runtime()
+        result["automatic_worker"] = schedule(runtime_manager, "claude", runtime_manager.env_file)
+    elif provider == "claude" and action == "stop" and sys.platform == "darwin":
+        runtime_manager = CodexManager(project, env_file)
+        label = runtime_manager.label.replace(".codex-", ".auto-")
+        runtime_manager.launchctl(["bootout", f"gui/{os.getuid()}/{label}"], required=False)
+        runtime_manager.plist.with_name(label + ".plist").unlink(missing_ok=True)
+    return result
+
+
+def display(action: str, provider: str | None, result: dict) -> None:
+    from canvas_mcp.agent_setup import LABELS
+
+    label = LABELS.get(provider, "Agente")
+    if action == "start":
+        print(
+            f"{label}: "
+            + ("já estava rodando." if result.get("already_running") else "início solicitado.")
+        )
+        print("Confira se o receptor conectou: uv run canvas-agent status")
+    elif action == "stop":
+        print(f"{label}: receptor e agendamento local encerrados; conversa e arquivos preservados.")
+    elif action == "prepare":
+        print(f"{label}: instalação preparada; nenhum serviço foi ativado.")
+    else:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Controlar o agente Canvas/Telegram com a assinatura do Codex ou Claude Code."
     )
-    parser.add_argument("action", choices=["prepare", "start", "status", "stop", "run", "auto-run"])
-    parser.add_argument("--provider", choices=["codex", "claude"], default="codex")
+    parser.add_argument(
+        "action",
+        choices=["setup", "login", "prepare", "start", "status", "stop", "run", "auto-run"],
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["codex", "claude"],
+        help="Sobrescreve a escolha salva no .env para este comando.",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Saída estruturada dos comandos de controle/status."
+    )
     parser.add_argument("--project-dir", type=Path, default=Path.cwd())
     parser.add_argument("--env-file", type=Path)
     args = parser.parse_args()
     try:
         from canvas_mcp.agent_runtime import CodexManager
+        from canvas_mcp.agent_setup import (
+            describe_overview,
+            login,
+            overview,
+            resolve_provider,
+            setup,
+        )
+
+        project = args.project_dir.resolve()
+        env_file = (args.env_file or project / ".env").resolve()
+        if args.action == "setup":
+            if args.json:
+                raise AgentError("setup é interativo e não aceita --json.")
+            setup(project, env_file, args.provider)
+            return 0
+        if args.action == "status" and not args.provider:
+            result = overview(project, env_file)
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                describe_overview(result)
+            return 0
+        if args.action == "stop" and not args.provider:
+            from canvas_mcp.agent_setup import selected_provider
+
+            state = overview(project, env_file)
+            providers = {name for name, item in state["providers"].items() if item.get("running")}
+            chosen = selected_provider(env_file)
+            if chosen:
+                providers.add(chosen)
+            # On macOS, also remove a scheduled worker whose receiver is already stopped.
+            if sys.platform == "darwin":
+                providers.add("codex")
+            results = {name: control("stop", name, project, env_file) for name in sorted(providers)}
+            if args.json:
+                print(json.dumps(results, ensure_ascii=False, indent=2))
+            elif results:
+                print(
+                    "Receptores e agendamento local deste projeto encerrados; "
+                    "conversa e arquivos preservados."
+                )
+            else:
+                print("Nenhum receptor em segundo plano está ativo neste projeto.")
+            return 0
+        provider = resolve_provider(args.provider, env_file)
+        if args.action == "login":
+            if args.json:
+                raise AgentError("login abre o fluxo oficial e não aceita --json.")
+            login(provider, project)
+            return 0
 
         if args.action == "auto-run":
             from canvas_mcp.agent_auto import AutoRunner
 
-            runtime_manager = CodexManager(args.project_dir, args.env_file)
+            runtime_manager = CodexManager(project, env_file)
             project = (
                 runtime_manager.runtime
                 if (runtime_manager.runtime / ".venv/bin/python").is_file()
-                else args.project_dir
+                else project
             )
-            result = asyncio.run(AutoRunner(project, runtime_manager.env_file, args.provider).run())
+            result = asyncio.run(AutoRunner(project, runtime_manager.env_file, provider).run())
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
 
-        manager = (
-            CodexManager(args.project_dir, args.env_file)
-            if args.provider == "codex"
-            else AgentManager(args.project_dir, args.env_file)
-        )
-        if args.action in {"start", "run"}:
-            if args.provider == "claude" and CodexManager(args.project_dir).status()["running"]:
-                raise AgentError("Pare o receptor Codex antes de iniciar Claude com o mesmo bot.")
-            if args.provider == "codex" and shutil.which("claude"):
-                other = AgentManager(args.project_dir, args.env_file).current()
-                if (
-                    other
-                    and other.get("pid")
-                    and other.get("status") in {"busy", "waiting", "idle"}
-                ):
-                    raise AgentError(
-                        "Pare o receptor Claude antes de iniciar Codex com o mesmo bot."
-                    )
-        result = getattr(manager, args.action)()
-        if args.provider == "claude" and args.action == "start":
-            from canvas_mcp.agent_auto import schedule
+        if args.action == "start" and not args.json:
+            from canvas_mcp.agent_setup import LABELS
 
-            runtime_manager = CodexManager(args.project_dir, args.env_file)
-            if sys.platform == "darwin" and AgentPolicy.load(runtime_manager.env_file).automatic:
-                runtime_manager.install_runtime()
-            result["automatic_worker"] = schedule(
-                runtime_manager, "claude", runtime_manager.env_file
-            )
-        elif args.provider == "claude" and args.action == "stop" and sys.platform == "darwin":
-            runtime_manager = CodexManager(args.project_dir, args.env_file)
-            label = runtime_manager.label.replace(".codex-", ".auto-")
-            runtime_manager.launchctl(["bootout", f"gui/{os.getuid()}/{label}"], required=False)
-            runtime_manager.plist.with_name(label + ".plist").unlink(missing_ok=True)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+            print("Iniciando " + LABELS[provider] + "; usando o login existente desse CLI.")
+            print("Para revisar conta/modo ou trocar de agente, use uv run canvas-agent setup.")
+        result = control(args.action, provider, project, env_file)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            display(args.action, provider, result)
         return 0
-    except (CanvasError, ValueError, OSError) as error:
+    except (EOFError, KeyboardInterrupt):
+        print(
+            "\nOperação interrompida. Etapas concluídas permanecem; "
+            "confira uv run canvas-agent status.",
+            file=sys.stderr,
+        )
+        return 130
+    except (CanvasError, ValueError, OSError, subprocess.TimeoutExpired) as error:
         message = (
             str(error)
             if isinstance(error, (ValueError, CanvasError))

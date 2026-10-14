@@ -16,7 +16,9 @@ for development. No permission bypass or credential is committed here.
 
 The `canvas-activity` skill in this folder is also exposed to Codex through
 `.agents/skills/`. For Telegram, the optional provider uses the official
-`telegram@claude-plugins-official` Channels plugin and `canvas-agent ... --provider claude`.
+`telegram@claude-plugins-official` Channels plugin. Use `canvas-agent setup` to choose
+Claude, explicitly reuse the shown account or open native login, then review activation.
+An explicit `--provider claude` is also available for individual lifecycle commands.
 See [the complete setup](../README.md#6-conversar-pelo-telegram-com-codex-ou-claude-code).
 Team/Enterprise Channels policy must allow it; keep normal permissions and never
 run two update receivers against the same bot.

@@ -15,7 +15,9 @@ Keep tokens in `.env`. Read [AGENTS.md](../AGENTS.md) before editing the server.
 
 The shared `canvas-activity` skill is exposed through `.agents/skills/` for native
 Codex discovery. The optional Telegram bridge uses Codex App Server with ChatGPT
-login and is controlled by `canvas-agent start|status|stop --provider codex`.
+login. Use `canvas-agent setup` to choose the provider/account and review activation;
+then `canvas-agent start|status|stop` uses the saved choice. An explicit `--provider codex`
+overrides it for one command only. Setup never opens login or activates without your choice.
 Follow [the complete setup](../README.md#6-conversar-pelo-telegram-com-codex-ou-claude-code).
 Test with synthetic updates and mocked protocol messages; do not solve real
 coursework or submit to Canvas just to validate the bridge.

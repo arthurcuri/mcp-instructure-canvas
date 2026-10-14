@@ -139,6 +139,7 @@ valor pelo comando de registro do MCP nem o publique em configurações de clien
 | `CANVAS_READ_ONLY` | `false` por padrão habilita escrita; `true` oculta ferramentas de escrita e bloqueia mutações no cliente HTTP |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Necessários para os lembretes e o agente pelo bot |
 | `CANVAS_AGENT_AUTO` | **`false` por padrão:** aguarda seu pedido. **`true`:** autoriza o trabalhador local a preparar e enviar atividades pendentes |
+| `CANVAS_AGENT_PROVIDER` | `codex` ou `claude`, escolhido pelo `canvas-agent setup`; vazio significa que nenhum agente foi escolhido |
 
 Exemplo de identificação: em `https://canvas.example.edu/courses/12345`, o curso
 é `12345`. Sem um curso padrão, informe `course_id` nas ferramentas de uma matéria
@@ -425,33 +426,83 @@ prepara os arquivos e responde pelo bot. Trabalhos ficam em `.local/activities/`
 A conversa aceita somente o dono da conversa privada configurada. O lembrete
 pode apontar outra matéria que o curso padrão: envie **nome ou link da atividade**.
 
+### Configuração guiada: você escolhe a conta e ativa o serviço
+
+Instale o CLI do provedor desejado, preencha Canvas/Telegram no `.env` e abra
+um Terminal na raiz do projeto:
+
+```sh
+uv run canvas-agent setup
+```
+
+O assistente de configuração tem quatro etapas:
+
+| Etapa | Sua escolha | O que o projeto faz |
+|---|---|---|
+| **1 · Agente** | Codex/ChatGPT ou Claude Code/Claude | Mostra as duas opções, sem escolher uma silenciosamente |
+| **2 · Conta** | Usar explicitamente a conta exibida ou abrir o login oficial | Consulta o status do CLI; mostra email/plano no Terminal; só abre o login quando você escolher |
+| **3 · Modo** | Manual ou automático | Explica se deve aguardar seu pedido ou resolver **e enviar** às 08h locais; Enter escolhe manual |
+| **4 · Revisão** | Salvar e iniciar, salvar sem iniciar ou cancelar | Mostra provedor, conta, Canvas, destino Telegram e receptores ativos antes de alterar configuração/serviços |
+
+Se escolher iniciar, o setup explica quais receptores serão parados para evitar
+dois consumidores do mesmo bot. Salvar sem iniciar altera apenas as chaves
+`CANVAS_AGENT_PROVIDER` e `CANVAS_AGENT_AUTO` do `.env`; serviços existentes seguem
+com a configuração anterior até serem reiniciados. Cancelar a revisão não salva
+essas escolhas nem altera serviços. Enter na revisão cancela.
+
+O login oficial é compartilhado com os outros usos do CLI nessa máquina. Se abrir
+e concluir um login, ele continua disponível no CLI mesmo que depois cancele a
+configuração do bot. O setup não copia credenciais de ChatGPT/Claude para o `.env`.
+A conta é exibida somente no seu Terminal, sem ser salva em logs ou configuração
+pública. Consultar o login e configurar o receptor não inicia uma tarefa de IA.
+
+Depois de salvar sua escolha, os comandos de controle ficam simples:
+
+```sh
+uv run canvas-agent status     # Mostra o provedor escolhido e ambos os receptores
+uv run canvas-agent start      # Inicia o provedor escolhido no .env
+uv run canvas-agent stop       # Para os receptores e o job local deste projeto
+uv run canvas-agent login      # Abre o login oficial do provedor escolhido; não inicia o bot
+```
+
+Para trocar de Codex para Claude ou vice-versa, execute `setup` novamente e
+revise a troca. Para scripts, `status --json` fornece saída estruturada.
+
+> **O que significa `--provider`?** É uma escolha apenas para aquele comando.
+> `start --provider codex` inicia Codex; `start --provider claude` inicia Claude.
+> `stop --provider codex` apenas para Codex: não escolhe o próximo agente nem faz
+> login/logout. O valor `code` é inválido. Uma flag não modifica a escolha salva
+> no `.env`. Sem escolha salva ou flag explícita, `start` pede que você faça setup.
+
 ### Codex com assinatura ChatGPT
 
 1. Instale [Codex CLI](https://developers.openai.com/codex/cli/).
-2. Entre com sua conta ChatGPT:
+2. Execute `uv run canvas-agent setup` e escolha **Codex / ChatGPT**. Você pode
+   aprovar o uso da conta que o CLI já tem ou escolher abrir o login no navegador.
+   Se preferir fazer o login oficial separadamente, use:
 
    ```sh
    codex login
    codex login status
    ```
 
-3. Conclua a instalação e o `.env` com Canvas/Telegram. O receptor recusa API key:
-   esse caminho usa autenticação ChatGPT gerenciada pelo Codex.
-4. No macOS, inicie e confira:
+3. Revise o modo e escolha **Salvar e iniciar agora**. O receptor recusa API key:
+   esse caminho usa o login ChatGPT gerenciado pelo Codex. Se escolheu apenas salvar,
+   no macOS inicie depois e confira:
 
    ```sh
-   uv run canvas-agent start --provider codex
-   uv run canvas-agent status --provider codex
+   uv run canvas-agent start
+   uv run canvas-agent status
    ```
 
-5. Envie `/start` ao bot e depois `Me explique a atividade deste link: ...`.
+4. Envie `/start` ao bot e depois `Me explique a atividade deste link: ...`.
    Você pode citar a mensagem do resumo ao responder. Arquivos pedidos podem
    voltar como anexos. A entrada pelo bot é **texto**; áudio, imagens e arquivos
    recebidos ainda não são interpretados pelo receptor Codex.
-6. Para parar, preservando conversa e arquivos:
+5. Para parar, preservando conversa e arquivos:
 
    ```sh
-   uv run canvas-agent stop --provider codex
+   uv run canvas-agent stop
    ```
 
 `start` instala um LaunchAgent do projeto, ativo na sua sessão do macOS.
@@ -486,31 +537,32 @@ reexecutados ao reiniciar. A recuperação não repete entregas.
 ### Claude Code com assinatura Claude
 
 1. Instale Claude Code atualizado e [Bun](https://bun.sh/docs/installation).
-2. Abra `claude` neste projeto, entre com `/login` usando sua assinatura e aceite
-   o diálogo de confiança do workspace.
+2. Abra `claude` neste projeto e aceite o diálogo de confiança do workspace.
+   O login pela assinatura pode ser feito no setup ou com `claude auth login --claudeai`.
 3. Instale o plugin oficial:
 
    ```sh
    claude plugin install telegram@claude-plugins-official --scope local
    ```
 
-4. Pare o receptor Codex antes de usar o mesmo bot com Claude:
+4. Execute o setup, escolha **Claude Code / Claude**, confira a conta e revise
+   a ativação. Se houver Codex rodando, o setup mostra que ele será parado:
 
    ```sh
-   uv run canvas-agent stop --provider codex
-   uv run canvas-agent start --provider claude
-   uv run canvas-agent status --provider claude
+   uv run canvas-agent setup
+   uv run canvas-agent status
    ```
 
 5. Envie um pedido ao bot. Respostas e aprovações usam o plugin oficial;
    siga os botões/instruções apresentados por ele.
-6. Para parar, use `uv run canvas-agent stop --provider claude`.
+6. Para parar, use `uv run canvas-agent stop`.
    Em primeiro plano, use `uv run canvas-agent run --provider claude`.
 
 **Channels precisa estar habilitado.** Em Team/Enterprise, o administrador deve
-permitir `channelsEnabled`. Esta conta Team bloqueou Channels; o receptor Claude
-não foi testado de ponta a ponta nesta conta. A implementação e os testes simulados
-estão disponíveis. Consulte [Channels](https://code.claude.com/docs/en/channels).
+permitir `channelsEnabled`. Se o status indicar bloqueio por política da organização,
+o administrador precisa habilitá-lo antes de receber mensagens pelo bot Claude.
+Os testes do repositório simulam esse fluxo; eles não garantem que sua instituição
+tenha habilitado Channels. Consulte [Channels](https://code.claude.com/docs/en/channels).
 
 Sessões Claude ociosas podem ser encerradas: abra `claude agents` e fixe a sessão
 com `Ctrl+T` para mantê-la disponível, conforme [agent view](https://code.claude.com/docs/en/agent-view).
@@ -539,6 +591,8 @@ CANVAS_AGENT_AUTO=false
 
 **Para ativar:** edite o `.env`, use `CANVAS_AGENT_AUTO=true`, confirme que
 `CANVAS_READ_ONLY=false`, pare e inicie o agente com o provedor escolhido.
+Você também pode escolher o modo automático no `canvas-agent setup` e revisar
+**Salvar e iniciar agora**; ele salva a chave e reinicia os receptores indicados.
 No Mac, `start` instala também o trabalhador diário das **08h no fuso do macOS**.
 Ele usa a mesma assinatura do provedor; pode trabalhar sem o receptor do bot,
 pois somente envia mensagens e não disputa `getUpdates`.
@@ -584,7 +638,7 @@ Não são usadas chaves de API OpenAI/Anthropic neste fluxo.
 | O que você quer | Como conectar |
 |---|---|
 | Canvas direto no Codex/Claude Code | Registre o MCP na funcionalidade 1 e abra uma nova sessão |
-| Conversar com o agente pelo Telegram | Faça login no CLI e execute `canvas-agent start --provider ...` |
+| Conversar com o agente pelo Telegram | Execute `canvas-agent setup`, escolha provedor/conta e revise a ativação |
 | Usar Claude Desktop com Canvas | Configure o MCP local conforme o exemplo/guia do Desktop |
 | Reutilizar o histórico deste chat no bot | Ele mantém outra conversa; envie ao bot o contexto necessário |
 | Usar apenas navegador/celular com um cliente que exige URL de MCP | Precisa de uma integração remota própria; este servidor é stdio local |
@@ -593,7 +647,7 @@ O bot usa **a conta autenticada no CLI da máquina**. Ele não se conecta a uma 
 já aberta do ChatGPT/Claude, nem importa seu histórico. O Codex cria e retoma sua
 própria conversa pelo App Server; Claude Channels mantém a sessão Claude Code.
 Depois de instalar, autenticar e iniciar, o receptor lê novas mensagens sozinho.
-Trocar a conta exige parar o serviço, renovar o login no CLI e iniciar novamente.
+Para revisar a conta/provedor e reiniciar, execute `canvas-agent setup`.
 As [documentações de autenticação Codex](https://learn.chatgpt.com/docs/auth) e
 [Claude Code](https://code.claude.com/docs/en/authentication) explicam os logins.
 
@@ -602,6 +656,8 @@ As [documentações de autenticação Codex](https://learn.chatgpt.com/docs/auth
 | Sintoma | Verificação/ação |
 |---|---|
 | “Pedido não iniciado” na versão anterior | Atualize o repo, instale dependências e faça `stop`/`start`. Conversas iniciais sem rollout agora são recuperadas |
+| “Escolha seu agente” ao iniciar | Execute `canvas-agent setup`; `CANVAS_AGENT_PROVIDER` ainda está vazio. Flags explícitas são opcionais para scripts |
+| Escolha salva diferente do receptor rodando | Foi escolhido salvar sem iniciar; execute `setup` novamente e revise a ativação |
 | Conversa real removida | `/reset` inicia outra; preserva trabalhos. Não repita uma entrega sem conferir o Canvas |
 | Bot não responde a `/start` | Inicie o receptor; confirme `canvas-agent status`, chat privado, Mac/internet e apenas um consumidor |
 | Telegram HTTP 409 | Outro poller ou webhook disputa o bot; pare o concorrente |

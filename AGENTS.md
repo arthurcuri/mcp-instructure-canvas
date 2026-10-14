@@ -46,6 +46,7 @@ and the differences between these configurations are documented in `README.md`.
 - `codex_agent.py`: owner-only polling, conversation persistence, approval relay and attachments.
 - `agent_runtime.py`: macOS LaunchAgent for Codex and foreground lifecycle.
 - `agent_policy.py`: strict opt-in `CANVAS_AGENT_AUTO` and trusted task authorization.
+- `agent_setup.py`: interactive provider/account choice, review before saving or activating.
 - `agent_auto.py`: daily local worker, per-assignment ledger, independent submission verification.
 - `automation/` and the daily/weekly Canvas Actions workflows: opt-in scheduling, no LLM calls.
 
@@ -86,6 +87,10 @@ and the differences between these configurations are documented in `README.md`.
   Never automatically retry attempted/uncertain tasks. Missing real data or
   extra permissions means needs_attention, never fabricated content or a placeholder.
 - Keep one poller per bot. Do not bypass organizational Channels policies.
+- Setup must let the user choose the provider/account and review mode/service activation.
+  Never open a login, save a choice or stop/start services before the relevant explicit choice.
+  Native login metadata may be shown in the user's interactive terminal, never in logs or public config.
+  No implicit provider for start/run; use saved CANVAS_AGENT_PROVIDER or an explicit --provider.
 - Persist update offsets before acting; never replay interrupted agent requests.
 - Do not forward raw provider errors, reasoning traces or credential-bearing URLs.
 - Recover missing provisional Codex threads only when no real/uncertain turn exists.

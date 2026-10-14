@@ -266,7 +266,9 @@ relatório de novo; não há controle persistente de deduplicação nesta versã
 
 O [passo a passo do README principal](../README.md#6-conversar-pelo-telegram-com-codex-ou-claude-code)
 descreve login, instalação, permissões, início, estado e parada de ambos os provedores.
-Codex é o padrão de `canvas-agent`; o outro provedor é selecionado por `--provider claude`.
+O `canvas-agent setup` deixa você escolher Codex ou Claude, conferir a conta do
+CLI, abrir o login oficial quando desejar, escolher modo e revisar a ativação.
+Salva `CANVAS_AGENT_PROVIDER` no `.env`; não há provedor escolhido implicitamente.
 
 | Parte | Executa onde | Usa IA | Precisa do Mac ligado |
 |---|---|---|---|
@@ -277,16 +279,20 @@ Codex é o padrão de `canvas-agent`; o outro provedor é selecionado por `--pro
 Exemplo de operação no macOS:
 
 ```sh
-uv run canvas-agent start --provider codex
-uv run canvas-agent status --provider codex
-uv run canvas-agent stop --provider codex
+uv run canvas-agent setup
+uv run canvas-agent status
+uv run canvas-agent start
+uv run canvas-agent stop
 ```
 
 O Codex usa um LaunchAgent do projeto e não precisa de Terminal/chat aberto.
-Para Claude, instale o plugin oficial, verifique a política de Channels, pare o
-Codex e use os mesmos comandos com `--provider claude`. Seu supervisor pode
+Para Claude, instale o plugin oficial, verifique a política de Channels e escolha
+Claude no setup; ele mostra a troca antes de parar/iniciar receptores. Seu supervisor pode
 encerrar sessões ociosas; fixe a sessão em `claude agents` se quiser mantê-la.
 As implementações não devem receber updates do mesmo bot simultaneamente.
+`--provider codex` ou `--provider claude` sobrescreve a escolha somente para aquele
+comando, sem salvar outra preferência. `stop` não faz login/logout. Para consultar
+ambos os receptores em um script, use `canvas-agent status --json`.
 Não execute `canvas-telegram-chats` enquanto um receptor está ativo.
 
 Codex salva offsets, conversa e estado em `.local/codex-agent/`, e Claude usa

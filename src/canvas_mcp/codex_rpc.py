@@ -44,7 +44,13 @@ class CodexRPC:
 
     async def start(self) -> dict:
         environment = dict(os.environ)
-        for name in ("OPENAI_API_KEY", "CANVAS_API_TOKEN", "TELEGRAM_BOT_TOKEN"):
+        for name in (
+            "OPENAI_API_KEY",
+            "CODEX_API_KEY",
+            "CODEX_ACCESS_TOKEN",
+            "CANVAS_API_TOKEN",
+            "TELEGRAM_BOT_TOKEN",
+        ):
             environment.pop(name, None)
         self.process = await asyncio.create_subprocess_exec(
             self.binary,
@@ -74,7 +80,10 @@ class CodexRPC:
         await self.send({"method": "initialized"})
         account = (await self.request("account/read", {"refreshToken": False})).get("account")
         if not isinstance(account, dict) or account.get("type") != "chatgpt":
-            raise CodexError("Execute codex login com ChatGPT; o agente não usa chave de API.")
+            raise CodexError(
+                "Execute codex login com ChatGPT; o agente não usa chave de API.",
+                category="authentication",
+            )
         return {"authentication": "chatgpt", "plan": account.get("planType")}
 
     async def send(self, message: dict) -> None:
