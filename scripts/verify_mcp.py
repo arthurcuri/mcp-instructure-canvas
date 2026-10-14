@@ -1,5 +1,6 @@
 """Opt-in live verification over stdio. Prints counts, never credentials or course bodies."""
 
+import argparse
 import asyncio
 import json
 from pathlib import Path
@@ -10,13 +11,18 @@ from mcp.client.stdio import stdio_client
 ROOT = Path(__file__).resolve().parents[1]
 
 
-async def main() -> None:
+async def main(container: str | None = None) -> None:
     command = ROOT / ".venv" / "bin" / "canvas-mcp-server"
     parameters = StdioServerParameters(
         command=str(command),
         args=["--env-file", str(ROOT / ".env")],
         cwd="/tmp",
     )
+    if container:
+        parameters = StdioServerParameters(
+            command="docker",
+            args=["run", "--rm", "-i", "--env-file", str(ROOT / ".env"), container],
+        )
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -42,6 +48,9 @@ async def main() -> None:
             results["week_start"] = due["start_inclusive"]
             results["week_end_exclusive"] = due["end_exclusive"]
             await call("get_due_assignments", {"period": "next_7_days"})
+            results["due_next_7_days_all_courses"] = (
+                await call("get_due_assignments", {"period": "next_7_days", "all_courses": True})
+            )["count"]
             if assignments["assignments"]:
                 assignment = assignments["assignments"][0]
                 details = await call("get_assignment", {"assignment_id": assignment["id"]})
@@ -70,4 +79,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--container", help="Verificar uma imagem Docker com o .env local.")
+    asyncio.run(main(parser.parse_args().container))

@@ -1,9 +1,39 @@
 # Changelog
 
-## Unreleased
+Este projeto usa versionamento semântico. Até a versão 1.0, interfaces podem mudar
+entre versões menores; as instruções de migração aparecem nas notas da release.
 
-- Optional daily Actions reminders at 09:17 São Paulo time, gated by `CANVAS_DAILY_ENABLED`.
-- Daily/weekly setup guide using the same Telegram and Canvas secrets; schedules remain opt-in.
+## 0.5.1 — 2026-10-14
+
+- Distribuição do MCP pelo GitHub Container Registry para Linux amd64/arm64,
+  com imagens base fixadas por digest e teste do protocolo antes da publicação.
+- Releases com wheel, pacote fonte e SHA256SUMS, verificando versões e ausência
+  de arquivos privados antes do upload.
+- Metadados Python e GitHub atualizados para apresentar as três funcionalidades:
+  MCP Canvas, lembretes Telegram e agente local Codex/Claude.
+- Guia de instalação dos pacotes e relatório de validação ponta a ponta.
+
+## 0.5.0 — 2026-10-14
+
+- `canvas-agent setup`: escolha explícita de provedor/conta, login oficial,
+  modo manual/automático e revisão antes de salvar ou iniciar.
+- Preferência `CANVAS_AGENT_PROVIDER` no `.env`, sem provedor implícito em `start`.
+- Status dos dois receptores, saída `--json` para scripts e login separado do início.
+- Cancelamento e opção de salvar sem alterar serviços existentes.
+
+## 0.4.0 — 2026-10-14
+
+- Trabalhador diário local com `CANVAS_AGENT_AUTO=true`, registro de tentativas,
+  verificação independente da submissão e ausência de reexecução automática.
+- Recuperação de conversas Codex provisórias sem histórico; preservação de
+  conversas reais e operações com resultado incerto.
+- README visual com arquitetura, instalação e três fluxos independentes.
+
+## 0.3.0 — 2026-10-13
+
+- Receptor privado Telegram/Codex usando login ChatGPT e Codex App Server.
+- Suporte ao plugin Telegram oficial do Claude Code, sujeito à política de Channels.
+- LaunchAgent no macOS, conversa persistente, aprovações e anexos de trabalhos.
 
 ## 0.2.0 — 2026-10-13
 

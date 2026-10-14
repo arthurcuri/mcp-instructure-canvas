@@ -5,6 +5,8 @@
 <p align="center">
   <a href="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml"><img src="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e" alt="Licença MIT" /></a>
+  <a href="https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest"><img src="https://img.shields.io/github/v/release/arthurcuri/mcp-instructure-canvas" alt="Release" /></a>
+  <a href="https://github.com/arthurcuri/mcp-instructure-canvas/pkgs/container/mcp-instructure-canvas"><img src="https://img.shields.io/badge/GHCR-amd64%20%7C%20arm64-2496ed" alt="GitHub Packages" /></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab" alt="Python 3.11 ou superior" />
   <img src="https://img.shields.io/badge/MCP-stdio-8b5cf6" alt="MCP local por stdio" />
 </p>
@@ -14,6 +16,10 @@
 **Acesse seu Canvas pelo assistente, receba prazos no Telegram e peça ajuda com atividades.**
 Um único repositório reúne três funcionalidades independentes. A instância é
 configurável; os exemplos usam o Canvas da PUC Minas.
+
+**Versão 0.5.1** · [Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) ·
+[Changelog](CHANGELOG.md) · [Pacotes e Docker](docs/packages.md) ·
+[Validação ponta a ponta](docs/validation.md)
 
 | Funcionalidade | O que faz | Onde executa | Consome quota de IA? |
 |---|---|---|---|

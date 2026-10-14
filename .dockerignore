@@ -1,0 +1,12 @@
+# Only public build inputs enter the image context.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!src/
+!src/**
+**/__pycache__/
+**/*.pyc

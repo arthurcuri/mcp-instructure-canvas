@@ -4,12 +4,19 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-instructure-canvas"
-version = "0.5.0"
-description = "Local Canvas LMS MCP server with a complete documented API catalog"
+version = "0.5.1"
+description = "Canvas LMS MCP with API reads/writes, Telegram reminders and local Codex/Claude agents"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Arthur Kramberger" }]
+keywords = ["mcp", "canvas-lms", "instructure", "telegram", "codex", "claude-code"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+]
 dependencies = [
     "httpx>=0.28,<1",
     "mcp>=1.28,<2",
@@ -20,6 +27,8 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/arthurcuri/mcp-instructure-canvas"
 Issues = "https://github.com/arthurcuri/mcp-instructure-canvas/issues"
+Documentation = "https://github.com/arthurcuri/mcp-instructure-canvas#readme"
+Changelog = "https://github.com/arthurcuri/mcp-instructure-canvas/blob/main/CHANGELOG.md"
 
 [project.scripts]
 canvas-mcp-server = "canvas_mcp.__main__:main"
