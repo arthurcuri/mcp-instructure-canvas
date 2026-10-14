@@ -285,6 +285,9 @@ class AgentManager:
             for key in ("id", "state", "status", "pid", "waitingFor"):
                 if key in current:
                     result[key] = current[key]
+            if not current.get("pid"):
+                result["channel_registration"] = "stopped"
+                return result
             logs = self.call(["logs", str(current["id"])])
             if "--channels blocked by org policy" in logs:
                 result["channel_registration"] = "blocked_by_organization"

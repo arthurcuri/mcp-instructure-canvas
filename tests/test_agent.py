@@ -140,3 +140,14 @@ def test_stop_only_targets_our_registered_session(project, monkeypatch):
     monkeypatch.setattr(manager, "call", lambda arguments: calls.append(arguments))
     assert manager.stop()["stopped"]
     assert calls == [["stop", "own-session"]]
+
+
+def test_stopped_session_does_not_require_a_log_file(project, monkeypatch):
+    manager = AgentManager(project)
+    monkeypatch.setattr(manager, "current", lambda: {"id": "short", "state": "stopped"})
+    calls = []
+    monkeypatch.setattr(manager, "call", lambda arguments: calls.append(arguments))
+    result = manager.status()
+    assert result["channel_registration"] == "stopped"
+    assert result["state"] == "stopped"
+    assert not calls
