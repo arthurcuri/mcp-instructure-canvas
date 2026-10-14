@@ -13,6 +13,7 @@ def clean_canvas_environment(monkeypatch):
         "CANVAS_TOKEN_EXPIRES_AT",
         "CANVAS_DEFAULT_COURSE_ID",
         "CANVAS_TIMEZONE",
+        "CANVAS_READ_ONLY",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -68,3 +69,27 @@ def test_process_environment_takes_precedence(tmp_path, monkeypatch):
     path.write_text("CANVAS_API_URL=https://canvas.example.test\nCANVAS_API_TOKEN=old\n")
     monkeypatch.setenv("CANVAS_API_TOKEN", "new")
     assert Settings.load(path).api_token == "new"
+
+
+@pytest.mark.parametrize(
+    "value, expected", [("true", True), ("1", True), ("false", False), ("0", False)]
+)
+def test_read_only_configuration(tmp_path, value, expected):
+    path = tmp_path / "config.env"
+    path.write_text(
+        "CANVAS_API_URL=https://canvas.example.test\nCANVAS_API_TOKEN=test-secret\n"
+        f"CANVAS_READ_ONLY={value}\n"
+    )
+    settings = Settings.load(path)
+    assert settings.read_only is expected
+    assert settings.public_info()["read_only"] is expected
+
+
+def test_invalid_read_only_configuration_fails(tmp_path):
+    path = tmp_path / "config.env"
+    path.write_text(
+        "CANVAS_API_URL=https://canvas.example.test\nCANVAS_API_TOKEN=test-secret\n"
+        "CANVAS_READ_ONLY=perhaps\n"
+    )
+    with pytest.raises(ConfigurationError, match="CANVAS_READ_ONLY"):
+        Settings.load(path)

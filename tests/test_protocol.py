@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -12,7 +13,7 @@ from canvas_mcp.client import CanvasClient
 from canvas_mcp.server import create_server
 
 
-async def test_registered_tools_are_read_only_and_return_structured_results(settings):
+async def test_registered_tools_classify_writes_and_return_structured_results(settings):
     client = CanvasClient(
         settings,
         transport=httpx.MockTransport(
@@ -22,9 +23,19 @@ async def test_registered_tools_are_read_only_and_return_structured_results(sett
     try:
         server = create_server(settings, client)
         tools = await server.list_tools()
-        assert len(tools) == 8
-        assert all(tool.annotations.readOnlyHint for tool in tools)
-        assert all(tool.annotations.destructiveHint is False for tool in tools)
+        assert len(tools) == 18
+        writes = {tool.name for tool in tools if tool.annotations.destructiveHint}
+        assert writes == {
+            "canvas_api_write",
+            "canvas_upload_file",
+            "submit_assignment",
+            "canvas_graphql_write",
+        }
+        assert all(tool.annotations.destructiveHint == (tool.name in writes) for tool in tools)
+        assert {tool.name for tool in tools if not tool.annotations.readOnlyHint} == writes | {
+            "canvas_api_download",
+            "download_canvas_file",
+        }
         assert all(tool.outputSchema for tool in tools)
         _, structured = await server.call_tool("list_assignments", {})
         assert structured["count"] == 1
@@ -51,8 +62,67 @@ async def test_stdio_handshake_and_tool_errors_work_without_network(tmp_path):
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()
-            assert len(tools.tools) == 8
+            assert len(tools.tools) == 18
             result = await session.call_tool("get_assignment", {"assignment_id": -1})
             assert result.isError
             assert "inteiro positivo" in result.content[0].text
             assert "test-secret" not in json.dumps(result.model_dump())
+
+
+async def test_read_only_mode_omits_all_write_tools(settings):
+    readonly = replace(settings, read_only=True)
+    client = CanvasClient(
+        readonly, transport=httpx.MockTransport(lambda request: httpx.Response(200, json={}))
+    )
+    try:
+        server = create_server(readonly, client)
+        tools = await server.list_tools()
+        assert len(tools) == 14
+        assert sum(bool(tool.annotations.readOnlyHint) for tool in tools) == 12
+        assert all(tool.annotations.destructiveHint is False for tool in tools)
+        with pytest.raises(ToolError, match="canvas_api_write"):
+            await server.call_tool(
+                "canvas_api_read", {"operation_id": "submissions.submit_assignment_courses"}
+            )
+        with pytest.raises(ToolError, match="correspondente"):
+            await server.call_tool(
+                "canvas_graphql_read", {"query": "mutation { deleteCourse(id: 1) { id } }"}
+            )
+    finally:
+        await client.close()
+
+
+async def test_assignment_submission_posts_content_and_never_placeholder(settings):
+    calls = []
+
+    def handle(request):
+        calls.append(request)
+        assert request.method == "POST"
+        assert request.url.path == "/api/v1/courses/286470/assignments/7/submissions"
+        assert json.loads(request.content) == {
+            "submission": {"submission_type": "online_upload", "file_ids": [123]},
+            "comment": {"text_comment": "Entrega"},
+        }
+        return httpx.Response(201, json={"id": 44, "workflow_state": "submitted"})
+
+    client = CanvasClient(settings, transport=httpx.MockTransport(handle))
+    try:
+        server = create_server(settings, client)
+        with pytest.raises(ToolError, match="conteúdo"):
+            await server.call_tool(
+                "submit_assignment",
+                {"assignment_id": 7, "submission": {"submission_type": "online_text_entry"}},
+            )
+        assert not calls
+        _, result = await server.call_tool(
+            "submit_assignment",
+            {
+                "assignment_id": 7,
+                "submission": {"submission_type": "online_upload", "file_ids": [123]},
+                "comment": {"text_comment": "Entrega"},
+            },
+        )
+        assert result["data"]["workflow_state"] == "submitted"
+        assert len(calls) == 1
+    finally:
+        await client.close()

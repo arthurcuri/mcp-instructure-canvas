@@ -21,6 +21,7 @@ class Settings:
     default_course_id: int | None = None
     timezone: str = "America/Sao_Paulo"
     token_expires_at: date | None = None
+    read_only: bool = False
 
     @classmethod
     def load(cls, env_file: Path | None = None) -> "Settings":
@@ -70,7 +71,17 @@ class Settings:
             expires_at = date.fromisoformat(expiry) if expiry else None
         except ValueError:
             raise ConfigurationError("CANVAS_TOKEN_EXPIRES_AT deve usar YYYY-MM-DD.") from None
-        return cls(api_url, token, int(course) if course else None, timezone, expires_at)
+        read_only = read("CANVAS_READ_ONLY", "false").lower()
+        if read_only not in {"true", "false", "1", "0"}:
+            raise ConfigurationError("CANVAS_READ_ONLY deve ser true ou false.")
+        return cls(
+            api_url,
+            token,
+            int(course) if course else None,
+            timezone,
+            expires_at,
+            read_only in {"true", "1"},
+        )
 
     def public_info(self) -> dict:
         today = datetime.now(ZoneInfo(self.timezone)).date()
@@ -86,5 +97,5 @@ class Settings:
             "default_course_id": self.default_course_id,
             "timezone": self.timezone,
             "transport": "stdio",
-            "read_only": True,
+            "read_only": self.read_only,
         }

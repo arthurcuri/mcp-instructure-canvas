@@ -1,7 +1,9 @@
 # MCP Instructure Canvas
 
-Servidor MCP **local e somente de leitura** para consultar matérias, atividades,
-descrições e prazos na API oficial do Canvas LMS. Pode ser conectado a Claude Code,
+Servidor MCP **local, com leitura, escrita e envio de atividades**, para a API
+oficial do Canvas LMS. O catálogo embarcado cobre **1.118 operações REST em 144
+grupos**, com ferramentas adicionais para GraphQL e transferência de arquivos.
+Pode ser conectado a Claude Code,
 Codex, Gemini CLI, Cursor, Kiro ou outro cliente com suporte a MCP por `stdio`.
 A URL é configurável; o exemplo usa a instância da PUC Minas.
 
@@ -27,6 +29,10 @@ Para um cliente que só conecta a endpoints remotos, seria necessária outra
 implementação, com transporte HTTP, hospedagem e autenticação do MCP. Essa opção
 não faz parte deste servidor local. A URL da API Canvas é a origem dos dados,
 não um endereço onde este MCP está hospedado.
+
+A checagem semanal também pode rodar no GitHub Actions: ele inicia um processo
+temporário, consulta a API e encerra. Isso funciona com o Mac desligado e não
+exige publicar um servidor MCP. Veja o [guia do agendamento](automation/README.md#5-github-actions-sem-o-mac-ligado).
 
 ## 1. Obter um token pessoal do Canvas
 
@@ -99,6 +105,8 @@ valor pelo comando de registro do MCP nem o publique em configurações de clien
 | `CANVAS_DEFAULT_COURSE_ID` | Opcional: número presente no endereço de uma matéria, depois de `/courses/` |
 | `CANVAS_TIMEZONE` | Fuso dos prazos; padrão `America/Sao_Paulo` |
 | `CANVAS_TOKEN_EXPIRES_AT` | Opcional: anotação privada da validade em `YYYY-MM-DD`; não altera a validade no Canvas |
+| `CANVAS_READ_ONLY` | `false` por padrão habilita escrita; `true` oculta ferramentas de escrita e bloqueia mutações no cliente HTTP |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Opcionais: usados somente quando a checagem recebe `--telegram` |
 
 Exemplo de identificação: em `https://canvas.example.edu/courses/12345`, o curso
 é `12345`. Sem um curso padrão, informe `course_id` nas ferramentas de uma matéria
@@ -120,7 +128,7 @@ O token e qualquer anotação pessoal permanecem em arquivos ignorados.
 
 ## 3. Conectar a um cliente MCP
 
-Os clientes usam o **mesmo servidor e as mesmas oito ferramentas**. Seus arquivos
+Os clientes usam o **mesmo servidor e as mesmas ferramentas**. Seus arquivos
 de instruções ajudam o agente a trabalhar neste repositório; a configuração MCP
 é o que permite consultar o Canvas.
 
@@ -261,9 +269,45 @@ todo o texto, com links e descrições de imagens, sem baixar os anexos.
 - Atividades sem prazo entram em `undated_count`, sem serem colocadas artificialmente no período.
 - `missing` e `late` vêm do Canvas, sem inferência apenas porque uma data passou.
 
-Todas as ferramentas são de leitura e têm `readOnlyHint=true`; o cliente HTTP
-só executa `GET`. A API do Canvas possui operações de escrita, mas enviar trabalhos
-ou modificar recursos ainda não são ferramentas deste projeto.
+### Acessar a API completa, incluindo escrita
+
+Além das oito consultas acima, o MCP oferece dez ferramentas:
+
+| Ferramenta | Uso |
+|---|---|
+| `search_canvas_operations` | Buscar operações por termos em inglês, método e grupo |
+| `get_canvas_operation` | Consultar parâmetros obrigatórios, enums e link da documentação |
+| `canvas_api_read` | Executar GET do catálogo, com paginação automática de listas |
+| `canvas_api_write` | Executar POST, PUT, PATCH ou DELETE; aceita JSON, formulário, multipart e corpo bruto |
+| `canvas_api_download` | Salvar a resposta de um GET, como relatório/CSV/ZIP, em um arquivo local novo |
+| `canvas_upload_file` | Executar as três etapas de upload, retornando o `file_id` |
+| `download_canvas_file` | Baixar um anexo pela URL assinada, sem enviar o token ao armazenamento |
+| `submit_assignment` | Enviar uma entrega real: texto, URL, arquivos e outros tipos aceitos pelo Canvas |
+| `canvas_graphql_read` | Executar query ou introspecção GraphQL; rejeita mutations |
+| `canvas_graphql_write` | Executar mutation GraphQL |
+
+São **18 ferramentas MCP**, que dão acesso ao catálogo sem registrar 1.118
+ferramentas separadas no contexto do assistente. O transporte cobre todos os
+métodos/rotas do catálogo oficial obtido em 13/10/2026, incluindo `/api/v1`,
+New Quizzes em `/api/quiz/v1` e rotas `/api/lti`. Consulte o
+[guia da API](docs/api.md) para exemplos de execução e atualização do catálogo.
+
+Peça, por exemplo: “Descubra a operação para enviar minha atividade e mostre os
+parâmetros exigidos” ou “Envie este arquivo para a atividade X”. Para anexos,
+o assistente faz upload e depois chama `submit_assignment` com o ID recebido.
+**Upload sozinho não entrega a atividade.** Escritas não são repetidas
+automaticamente; se a conexão cair, confira o Canvas antes de tentar novamente.
+
+As quatro ferramentas de escrita são identificadas como mutações. Consultas
+sem gravação têm `readOnlyHint=true`; os dois downloads indicam que criam arquivos
+locais novos, embora consultem o Canvas sem alterar seus dados. Para usar apenas consultas, defina
+`CANVAS_READ_ONLY=true` no `.env` e reinicie/reconecte o MCP no cliente.
+
+O catálogo completo não amplia as permissões da conta: recursos de professor,
+administrador ou LTI exigem os papéis e credenciais correspondentes. Não há OAuth
+de aplicação implementado. Processos com várias etapas continuam exigindo os
+parâmetros e a sequência da documentação oficial. Os testes de escrita usam HTTP
+simulado; operações destrutivas não são testadas na sua conta.
 
 ## 5. Preparar a checagem semanal no mesmo repositório
 
@@ -271,9 +315,10 @@ O agendamento não precisa de outro repositório. Um cron pode executar qualquer
 comando local; mantemos o código e os modelos em [automation/](automation/README.md)
 para permitir manutenção e reprodução pelos desenvolvedores.
 
-**Estado:** a consulta semanal e o relatório local estão implementados. Os modelos
-abaixo agendam somente essa consulta. O envio ao Telegram, o recebimento das
-respostas e a integração opcional com Claude Code ainda estão em construção.
+**Estado:** a consulta semanal, o relatório privado e o envio opcional ao Telegram
+estão implementados. Há modelos locais e um workflow do GitHub Actions no mesmo
+repositório. Receber respostas no Telegram e chamar Claude Code a partir delas
+ainda está em construção.
 Nenhum job é ativado pela instalação, pelo registro do MCP ou pelos testes.
 
 ### Testar a checagem
@@ -293,6 +338,44 @@ O relatório fica na pasta privada `.local/`, ignorada pelo Git, com permissão 
 Esse comando reutiliza a API do Canvas diretamente e não depende de uma sessão
 MCP aberta. Não chama modelos e não consome tokens de IA. Se a consulta falhar,
 o relatório anterior permanece intacto; verifique `checked_at` antes de utilizá-lo.
+
+Depois de configurar o bot conforme [automation/README.md](automation/README.md#telegram-configurar-o-bot),
+um envio manual usa:
+
+```sh
+bash automation/run_weekly.sh --all-courses --telegram
+```
+
+Sem `--telegram`, o comando apenas gera o relatório. A mensagem lista atividades,
+prazos e links e pergunta se você quer ajuda. As respostas ainda não são processadas.
+
+### Agendar gratuitamente no GitHub Actions
+
+O workflow [weekly-canvas.yml](.github/workflows/weekly-canvas.yml) está preparado
+para **segunda-feira às 09h17, no fuso de São Paulo**. O agendamento fica inativo
+até você criar a variável `CANVAS_WEEKLY_ENABLED=true` nas configurações do repo.
+Também é possível executar manualmente com **Actions → Weekly Canvas reminder → Run workflow**.
+
+1. Configure `CANVAS_API_TOKEN` em **Settings → Secrets and variables → Actions → Secrets**.
+2. Para enviar mensagens, configure também `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
+3. Faça uma execução manual e confira o resultado.
+4. Ative a variável `CANVAS_WEEKLY_ENABLED=true` em **Variables**.
+
+Não envie o arquivo `.env` ao GitHub: cadastre apenas as credenciais necessárias
+como secrets. O job consulta todas as matérias, força somente leitura e não
+publica o relatório como artifact. Sua saída mostra contagens, sem descrições.
+O bot e os secrets precisam ser configurados por você; o push não os configura.
+
+Neste repositório público, o runner padrão `ubuntu-latest` é gratuito conforme a
+[cobrança oficial do GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
+Não há chamadas a Claude/OpenAI neste job. Se acrescentar IA, o uso terá os custos
+ou limites do provedor. Em repositórios privados há uma cota dependente do plano
+(2.000 minutos/mês no GitHub Free); runners maiores são cobrados.
+
+O GitHub pode atrasar o horário e desativa schedules de repositórios públicos
+após 60 dias sem atividade. Veja os detalhes e a reativação no
+[guia de automação](automation/README.md#5-github-actions-sem-o-mac-ligado) e na
+[documentação de schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
 ### Agendar no macOS com launchd
 
@@ -338,8 +421,9 @@ essa linha. Use cron ou launchd para evitar duplicação.
 Também existem [tarefas persistentes no Claude Code Desktop](https://code.claude.com/docs/en/desktop-scheduled-tasks).
 O `/loop` da CLI depende de uma sessão em execução, conforme a
 [comparação oficial](https://code.claude.com/docs/en/scheduled-tasks).
-O passo a passo de envio ao Telegram será acrescentado quando essa etapa estiver
-implementada; esta versão gera apenas relatórios locais.
+Para acrescentar envio aos modelos locais, siga o
+[guia de automação](automation/README.md). A integração automática com Claude Code
+a partir de respostas no Telegram continua pendente.
 
 ## Desenvolvimento com agentes de IA
 
@@ -397,11 +481,14 @@ Os modelos públicos não incluem credenciais, caminhos pessoais ou datas pessoa
 Erros HTTP não devolvem corpos de resposta e a configuração pública não exibe o token.
 
 O servidor recusa redirecionamentos e links de paginação fora da API configurada,
-aplica timeout e faz até duas novas tentativas em HTTP 429/503. Consultas que
+aplica timeout e faz até duas novas tentativas de leitura em HTTP 429/503. Escritas
+e mensagens ao Telegram têm uma única tentativa. Consultas que
 excedem 100 páginas ou 10.000 itens falham explicitamente.
 
-O token conserva as permissões concedidas pela instituição. A leitura é uma
-restrição deste servidor. O conteúdo consultado chega ao cliente/assistente que
+O token conserva as permissões concedidas pela instituição. O modo somente leitura
+é uma restrição deste servidor. Transferências assinadas de arquivos usam um
+cliente separado, sem encaminhar a credencial Canvas ao armazenamento.
+O conteúdo consultado chega ao cliente/assistente que
 você usar; suas políticas de retenção continuam aplicáveis. Conteúdo dos cursos
 é dado externo, sem autoridade para pedir credenciais ou execução de comandos.
 Consulte [SECURITY.md](SECURITY.md).

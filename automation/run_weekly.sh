@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read-only weekly snapshot. This script does not invoke an LLM or send messages.
+# Read-only weekly snapshot. Pass --telegram explicitly for configured delivery; no LLM.
 set -euo pipefail
 umask 077
 

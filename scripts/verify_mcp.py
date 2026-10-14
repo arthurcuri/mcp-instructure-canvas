@@ -21,8 +21,9 @@ async def main() -> None:
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = (await session.list_tools()).tools
-            assert len(tools) == 8
-            assert all(tool.annotations.readOnlyHint for tool in tools)
+            assert len(tools) in {14, 18}
+            reads = [tool for tool in tools if tool.annotations.readOnlyHint]
+            assert len(reads) == 12
             results = {}
 
             async def call(name: str, arguments: dict | None = None) -> dict:
@@ -57,7 +58,13 @@ async def main() -> None:
                 results["page_body_complete"] = page["body_complete"]
             print(
                 json.dumps(
-                    {"mcp_verified": True, "read_only_tools": len(tools), **results}, indent=2
+                    {
+                        "mcp_verified": True,
+                        "tools": len(tools),
+                        "read_only_tools": len(reads),
+                        **results,
+                    },
+                    indent=2,
                 )
             )
 

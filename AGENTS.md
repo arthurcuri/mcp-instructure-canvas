@@ -1,9 +1,9 @@
 # Repository instructions
 
-This is a personal, local, read-only Canvas MCP server. Weekly snapshots and
-opt-in scheduling templates share this repository. Telegram delivery, responses
-and LLM automation are still pending; do not claim they work or activate jobs
-while preparing configuration examples.
+This is a personal, local Canvas MCP server with API reads and writes. Weekly snapshots and
+opt-in scheduling templates share this repository. Telegram reminders are opt-in;
+processing replies and LLM automation are still pending. Do not activate jobs
+or send real messages while preparing configuration examples.
 
 ## Agent clients
 
@@ -26,17 +26,25 @@ and the differences between these configurations are documented in `README.md`.
 ## Architecture
 
 - `config.py`: explicit `.env` loading and credential-safe configuration.
-- `client.py`: the only HTTP client; GET requests, pagination and safe errors.
+- `client.py`: authenticated HTTP transport; same-origin requests and retries for reads only.
+- `catalog.py` and `data/operations.json`: offline discovery of the documented REST inventory.
+- `api.py`: catalog-backed REST requests, body encodings and GraphQL classification.
+- `transfers.py`: file upload/download; a separate storage client never receives Canvas credentials.
 - `content.py`: HTML-to-text conversion without executing or fetching content.
 - `service.py`: course queries, personal submission state and local date windows.
-- `server.py`: eight MCP tools with read-only annotations and structured results.
+- `server.py`: 18 MCP tools (14 Canvas reads, 4 Canvas writes), or 14 with
+  `CANVAS_READ_ONLY=true`. Downloads have non-read-only MCP hints because they create local files.
 - `__main__.py`: stdio entry point plus `--test` and `--config` diagnostics.
 - `weekly.py`: the `canvas-weekly-check` CLI; reads Canvas and atomically saves a private snapshot.
-- `automation/`: a launcher and opt-in launchd/cron templates; no Telegram or LLM calls yet.
+- `notifications.py`: explicitly requested Telegram delivery and private chat-ID discovery.
+- `automation/` and `.github/workflows/weekly-canvas.yml`: opt-in local/cloud scheduling, no LLM calls.
 
 ## Invariants
 
-- Keep Canvas access read-only. Do not add write endpoints or arbitrary code execution.
+- The user authorized implementing the complete documented Canvas API, including
+  writes and submissions. Keep read and write MCP tools separate, respect
+  `CANVAS_READ_ONLY`, and never perform live Canvas mutations just to test features.
+  Do not add arbitrary code execution.
 - Never print, commit, embed in client config, or return `CANVAS_API_TOKEN`.
   `.env` is private. `.env.example` contains placeholders only. Personal expiry
   dates and other notes belong in ignored local files, never in public examples.
@@ -44,7 +52,12 @@ and the differences between these configurations are documented in `README.md`.
   use fictitious paths; do not commit tokens or auto-approve tools for contributors.
 - Do not read `.env` during routine source exploration. Tests must use synthetic
   credentials and mocked HTTP; live tests are opt-in for authorized integration work.
-- Keep credentials within the configured HTTPS API origin; do not follow redirects.
+- Send Canvas credentials only to the configured HTTPS API origin; do not follow authenticated redirects.
+  Signed file transfers use a separate client without the Canvas Authorization header.
+- Writes and Telegram delivery are never retried automatically. After a transport
+  failure their result may be indeterminate; check the remote state before repeating.
+- Uploading an attachment does not submit an assignment. Use an explicit submission call.
+- Weekly automation always uses Canvas reads. Cloud reports must not become public artifacts/logs.
 - Follow Canvas's opaque Link pagination without reapplying initial parameters.
 - Return complete content when a tool promises complete content. Lists are summaries.
 - Use timezone-aware datetimes. Weekly windows start Monday in the configured zone

@@ -1,5 +1,5 @@
 # Alternative to launchd: Mondays at 09:00 in the computer's timezone.
 # Edit the absolute path, then add this single line with `crontab -e`.
-# This generates a local report; Telegram delivery is still pending.
+# This generates a local report; add --telegram explicitly for configured delivery.
 # Do not install both cron and launchd for the same task.
 0 9 * * 1 /bin/bash "/absolute/path/to/mcp-instructure-canvas/automation/run_weekly.sh"

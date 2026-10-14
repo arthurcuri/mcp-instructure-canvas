@@ -32,7 +32,7 @@ async def check_connection(settings: Settings) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Servidor MCP local e somente de leitura do Canvas."
+        description="Servidor MCP local da API Canvas, com leitura e escrita configurável."
     )
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(

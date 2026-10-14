@@ -1,4 +1,4 @@
-"""Opt-in weekly deadline snapshot, reusing Canvas reads without an LLM or delivery."""
+"""Weekly deadline snapshot and optional Telegram reminder, without an LLM."""
 
 import argparse
 import asyncio
@@ -6,11 +6,13 @@ import json
 import os
 import sys
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
 from canvas_mcp.client import CanvasClient, CanvasError
 from canvas_mcp.config import Settings
+from canvas_mcp.notifications import TelegramClient, TelegramSettings
 from canvas_mcp.service import CanvasService
 
 
@@ -22,7 +24,7 @@ async def collect_report(
     period: Literal["this_week", "next_7_days"] = "next_7_days",
     include_completed: bool = False,
 ) -> dict:
-    client = CanvasClient(settings)
+    client = CanvasClient(replace(settings, read_only=True))
     try:
         return await CanvasService(settings, client).get_due_assignments(
             course_id=course_id,
@@ -54,7 +56,7 @@ def save_report(path: Path, report: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Consultar prazos do Canvas e gerar um relatório local, sem IA ou Telegram."
+        description="Consultar prazos, salvar relatório e opcionalmente avisar no Telegram, sem IA."
     )
     parser.add_argument("--env-file", type=Path, help="Caminho explícito do .env.")
     scope = parser.add_mutually_exclusive_group()
@@ -65,11 +67,17 @@ def main() -> int:
     parser.add_argument("--period", choices=["this_week", "next_7_days"], default="next_7_days")
     parser.add_argument("--include-completed", action="store_true")
     parser.add_argument(
+        "--telegram",
+        action="store_true",
+        help="Enviar lembrete ao chat configurado; exige TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID.",
+    )
+    parser.add_argument(
         "--output", type=Path, help="Salvar JSON com permissão 600; padrão: stdout."
     )
     args = parser.parse_args()
     try:
         settings = Settings.load(args.env_file)
+        telegram = TelegramSettings.load(args.env_file) if args.telegram else None
         report = asyncio.run(
             collect_report(
                 settings,
@@ -85,8 +93,11 @@ def main() -> int:
                 f"Relatório salvo: {report['count']} atividade(s), "
                 f"{len(report['courses_checked'])} matéria(s)."
             )
-        else:
+        elif telegram is None:
             print(json.dumps(report, ensure_ascii=False, indent=2))
+        if telegram is not None:
+            sent = asyncio.run(TelegramClient(telegram).send_report(report))
+            print(f"Telegram confirmou {sent} mensagem(ns).")
     except (CanvasError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 1
