@@ -56,7 +56,11 @@ def reminder_messages(report: dict) -> list[str]:
         lines.extend(["", f"Há {report['undated_count']} atividade(s) sem prazo definido."])
     if report["count"]:
         lines.extend(
-            ["", "Quer ajuda para fazer alguma dessas atividades? Abra seu assistente e diga qual."]
+            [
+                "",
+                "Quer ajuda para fazer alguma dessas atividades? "
+                "Responda com o nome ou link da atividade.",
+            ]
         )
     else:
         lines.extend(["", "Nenhuma atividade pendente com prazo nesse período."])
@@ -71,6 +75,32 @@ class TelegramClient:
     ):
         self.settings = settings
         self.transport = transport
+
+    async def send_document(self, path: Path, content: bytes) -> None:
+        """Send one already-validated coursework file. Never retry an ambiguous delivery."""
+        async with httpx.AsyncClient(
+            timeout=60, follow_redirects=False, trust_env=False, transport=self.transport
+        ) as http:
+            try:
+                response = await http.post(
+                    f"https://api.telegram.org/bot{self.settings.token}/sendDocument",
+                    data={"chat_id": self.settings.chat_id},
+                    files={"document": (path.name, content, "application/octet-stream")},
+                )
+            except httpx.RequestError:
+                raise TelegramError(
+                    "Envio de anexo interrompido; confira o chat antes de repetir."
+                ) from None
+        try:
+            result = response.json()
+        except ValueError:
+            raise TelegramError("Telegram não confirmou o anexo; confira o chat.") from None
+        if (
+            not 200 <= response.status_code < 300
+            or not isinstance(result, dict)
+            or result.get("ok") is not True
+        ):
+            raise TelegramError("Telegram recusou o anexo; o envio não foi repetido.")
 
     async def _call(self, method: str, payload: dict) -> object:
         async with httpx.AsyncClient(

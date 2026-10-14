@@ -1,0 +1,3 @@
+interface:
+  display_name: "Canvas Activity"
+  short_description: "Consultar e preparar atividades do Canvas quando solicitado."

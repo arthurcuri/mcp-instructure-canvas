@@ -14,12 +14,13 @@ comando local sem precisar de outro repo; versionar o script aqui facilita sua m
 | Enviar mensagem ao Telegram | Implementado, opt-in com `--telegram` |
 | Workflow semanal no GitHub Actions | Disponível, schedule condicionado a variável explícita |
 | Workflow diário no GitHub Actions | Disponível, schedule condicionado a `CANVAS_DAILY_ENABLED=true` |
-| Receber a resposta do usuário no Telegram | Pendente |
-| Chamar Claude Code para ajudar com a atividade | Pendente |
+| Receber pedidos do dono da conversa no Telegram | Implementado no receptor Codex e no plugin Claude |
+| Pedir ajuda com atividades usando assinatura | Codex com ChatGPT ou Claude Code com Channels habilitado |
 
 Nenhum job é instalado durante `uv sync`, o registro do MCP ou os testes. Os
 modelos locais executam a checagem; acrescentar `--telegram` habilita o envio ao
-chat configurado. Nenhum caminho inicia IA automaticamente.
+chat configurado. O resumo e a espera por mensagens não iniciam IA; o agente
+opcional só recebe uma tarefa quando você envia um pedido ao bot.
 
 ## 1. Testar antes de agendar
 
@@ -152,8 +153,8 @@ Se acrescentarmos Claude Code, a execução terá o consumo do cliente/modelo.
    bash automation/run_weekly.sh --all-courses --telegram
    ```
 
-A mensagem mostra nomes, prazos locais e links. Pergunta se você quer ajuda;
-receber/tratar a resposta e executar Claude Code ainda não estão implementados.
+A mensagem mostra nomes, prazos locais e links. Com o receptor da seção 6 ativo,
+responda com o nome ou link da atividade e o pedido de ajuda.
 Sem `--telegram`, nenhuma mensagem é enviada, mesmo com os secrets preenchidos.
 O comando `canvas-telegram-chats` consulta `getUpdates` sem consumir updates por
 offset nem enviar mensagens. Use um bot dedicado, sem webhook ou outro consumidor
@@ -181,7 +182,7 @@ Escolha a frequência desejada; os horários usam `America/Sao_Paulo`:
 
 | Frequência | Workflow / nome em Actions | Horário | Variável de ativação |
 |---|---|---|---|
-| Diário | [daily-canvas.yml](../.github/workflows/daily-canvas.yml) / Daily Canvas reminder | Todos os dias, 09h17 | `CANVAS_DAILY_ENABLED=true` |
+| Diário | [daily-canvas.yml](../.github/workflows/daily-canvas.yml) / Daily Canvas reminder | Todos os dias, 08h00 | `CANVAS_DAILY_ENABLED=true` |
 | Semanal | [weekly-canvas.yml](../.github/workflows/weekly-canvas.yml) / Weekly Canvas reminder | Segunda-feira, 09h17 | `CANVAS_WEEKLY_ENABLED=true` |
 
 Os dois ficam disponíveis para execução manual antes da ativação automática.
@@ -213,7 +214,16 @@ A instalação e o push não preenchem secrets nem habilitam o schedule.
 
 O token passa a ficar também sob os controles de secrets do GitHub, além da sua
 máquina. Cadastre apenas os valores necessários: não faça upload do `.env`.
-Não foram cadastrados secrets nem ativada a variável por este projeto.
+Para cadastrar os valores do `.env` privado com GitHub CLI, execute:
+
+```sh
+gh auth login
+uv run python automation/configure_github.py --repo SEU_USUARIO/SEU_REPOSITORIO --activate
+```
+
+O script envia secrets por stdin, configura URL/fuso e, com `--activate`, habilita
+o diário e desabilita o semanal. Sem essa opção, não altera as variáveis de ativação.
+Use depois de publicar a versão desejada do workflow na branch padrão.
 
 Cada execução verifica todas as matérias ativas nos próximos sete dias e força
 `CANVAS_READ_ONLY=true`. Gera um JSON privado no runner e registra somente
@@ -237,7 +247,7 @@ separadamente. Confira a [política oficial](https://docs.github.com/en/billing/
 
 O horário usa o campo `timezone` do schedule. Mudar `CANVAS_TIMEZONE` altera as
 datas do relatório, sem alterar o fuso definido no YAML. Para mudar dia/hora,
-edite `cron` no workflow. O minuto 17 evita o início da hora, período de maior carga.
+edite `cron` no workflow. O semanal usa minuto 17; o diário atende ao horário de 08h.
 GitHub Actions pode atrasar ou descartar uma execução sob carga; não é um alarme
 com horário garantido. Schedules usam a branch padrão e repositórios públicos
 podem ter o agendamento desativado após **60 dias sem atividade**.
@@ -251,9 +261,38 @@ Se o GitHub o desativar por inatividade, use **Enable workflow** no mesmo menu
 e mantenha a variável habilitada. Reexecuções manuais podem enviar o mesmo
 relatório de novo; não há controle persistente de deduplicação nesta versão.
 
-## Próxima etapa: respostas e Claude Code
+## 6. Receptor do agente no mesmo repo
 
-O bot recebe mensagens no Telegram, mas este projeto ainda não processa respostas,
-não executa atividades por conta própria e não inicia Claude Code quando alguém
-responde. Essa integração poderá ficar no mesmo repositório, com autorização
-explícita para cada envio de atividade e um orçamento de uso do modelo.
+O [passo a passo do README principal](../README.md#6-conversar-pelo-telegram-com-codex-ou-claude-code)
+descreve login, instalação, permissões, início, estado e parada de ambos os provedores.
+Codex é o padrão de `canvas-agent`; o outro provedor é selecionado por `--provider claude`.
+
+| Parte | Executa onde | Usa IA | Precisa do Mac ligado |
+|---|---|---|---|
+| MCP stdio | Cliente local inicia quando precisa | O MCP apenas acessa a API | Para uso local |
+| Resumo diário, 08h São Paulo | GitHub Actions | Não | Não |
+| Conversa com agente | Receptor Codex ou Claude local | Quando você pede ajuda | Sim |
+
+Exemplo de operação no macOS:
+
+```sh
+uv run canvas-agent start --provider codex
+uv run canvas-agent status --provider codex
+uv run canvas-agent stop --provider codex
+```
+
+O Codex usa um LaunchAgent do projeto e não precisa de Terminal/chat aberto.
+Para Claude, instale o plugin oficial, verifique a política de Channels, pare o
+Codex e use os mesmos comandos com `--provider claude`. Seu supervisor pode
+encerrar sessões ociosas; fixe a sessão em `claude agents` se quiser mantê-la.
+As implementações não devem receber updates do mesmo bot simultaneamente.
+Não execute `canvas-telegram-chats` enquanto um receptor está ativo.
+
+Codex salva offsets, conversa e estado em `.local/codex-agent/`, e Claude usa
+`.local/agent/`. Esses arquivos são privados e ficam fora do Git. O receptor
+Codex aceita pedidos em texto, citações de mensagens e devolve texto/anexos do
+trabalho. Não recebe arquivos, áudio ou imagens como entrada nesta versão.
+Use `/help` no bot para comandos; aprovações expiram em 15 minutos. Tarefas
+Codex são interrompidas após 30 minutos; para continuar, envie novo pedido.
+Falhas não repetem automaticamente uma solicitação do agente ou uma entrega.
+Preparar arquivos não autoriza submetê-los ao Canvas: peça a entrega explicitamente.

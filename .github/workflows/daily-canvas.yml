@@ -3,7 +3,7 @@ name: Daily Canvas reminder
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 9 * * *"
+    - cron: "0 8 * * *"
       timezone: "America/Sao_Paulo"
 
 permissions:

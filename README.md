@@ -317,9 +317,8 @@ para permitir manutenção e reprodução pelos desenvolvedores.
 
 **Estado:** a consulta semanal, o relatório privado e o envio opcional ao Telegram
 estão implementados. Há modelos locais e workflows do GitHub Actions no mesmo
-repositório, com frequências semanal e diária. Receber respostas no Telegram e
-chamar Claude Code a partir delas
-ainda está em construção.
+repositório, com frequências semanal e diária. O agente opcional recebe pedidos
+no Telegram usando Codex com ChatGPT ou Claude Code com sua assinatura.
 Nenhum job é ativado pela instalação, pelo registro do MCP ou pelos testes.
 
 ### Testar a checagem
@@ -348,7 +347,8 @@ bash automation/run_weekly.sh --all-courses --telegram
 ```
 
 Sem `--telegram`, o comando apenas gera o relatório. A mensagem lista atividades,
-prazos e links e pergunta se você quer ajuda. As respostas ainda não são processadas.
+prazos e links e pergunta se você quer ajuda. Com o receptor da seção 6 ativo,
+você pode responder com o nome ou link da atividade e o pedido de ajuda.
 
 ### Agendar gratuitamente no GitHub Actions
 
@@ -357,7 +357,7 @@ para **segunda-feira às 09h17, no fuso de São Paulo**. O agendamento fica inat
 até você criar a variável `CANVAS_WEEKLY_ENABLED=true` nas configurações do repo.
 Também é possível executar manualmente com **Actions → Weekly Canvas reminder → Run workflow**.
 
-Para receber **todos os dias às 09h17**, use
+Para receber **todos os dias às 08h00**, use
 [daily-canvas.yml](.github/workflows/daily-canvas.yml), escolha **Daily Canvas reminder**
 em Actions e ative `CANVAS_DAILY_ENABLED=true` em Variables após o teste manual.
 Os secrets são os mesmos; deixe `CANVAS_WEEKLY_ENABLED=false` para evitar duplicação
@@ -366,12 +366,22 @@ na segunda-feira. Cada mensagem inclui as atividades pendentes dos próximos set
 1. Configure `CANVAS_API_TOKEN` em **Settings → Secrets and variables → Actions → Secrets**.
 2. Para enviar mensagens, configure também `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`.
 3. Faça uma execução manual e confira o resultado.
-4. Ative a variável `CANVAS_WEEKLY_ENABLED=true` em **Variables**.
+4. Para o diário, ative `CANVAS_DAILY_ENABLED=true` e deixe
+   `CANVAS_WEEKLY_ENABLED=false` em **Variables**. Para o semanal, faça o inverso.
 
 Não envie o arquivo `.env` ao GitHub: cadastre apenas as credenciais necessárias
 como secrets. O job consulta todas as matérias, força somente leitura e não
 publica o relatório como artifact. Sua saída mostra contagens, sem descrições.
-O bot e os secrets precisam ser configurados por você; o push não os configura.
+O push não configura secrets. Se o `.env` já estiver preenchido e o GitHub CLI
+autenticado, este comando cadastra somente os três secrets necessários e ativa
+o diário; os valores são enviados por stdin, sem aparecer nos argumentos:
+
+```sh
+gh auth login
+uv run python automation/configure_github.py --repo SEU_USUARIO/SEU_REPOSITORIO --activate
+```
+
+Sem `--activate`, ele apenas cadastra secrets e as variáveis de URL e fuso.
 
 Neste repositório público, o runner padrão `ubuntu-latest` é gratuito conforme a
 [cobrança oficial do GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
@@ -429,8 +439,137 @@ Também existem [tarefas persistentes no Claude Code Desktop](https://code.claud
 O `/loop` da CLI depende de uma sessão em execução, conforme a
 [comparação oficial](https://code.claude.com/docs/en/scheduled-tasks).
 Para acrescentar envio aos modelos locais, siga o
-[guia de automação](automation/README.md). A integração automática com Claude Code
-a partir de respostas no Telegram continua pendente.
+[guia de automação](automation/README.md).
+
+## 6. Conversar pelo Telegram com Codex ou Claude Code
+
+Há três processos independentes: o cliente inicia o **MCP local** quando precisa;
+o **GitHub Actions** envia o resumo diário às 08h sem IA; e o **receptor local**
+encaminha seus pedidos do Telegram ao agente escolhido. Tudo fica neste repo.
+Você não precisa fazer deploy do MCP ou manter um chat aberto para o receptor Codex.
+O Mac precisa estar ligado, com sua sessão iniciada e internet. Enquanto dorme ou
+está desligado, ele não responde; mensagens recentes serão lidas ao voltar.
+O lembrete na nuvem continua funcionando com o Mac desligado.
+
+Use apenas **um receptor por bot**. Pare o anterior antes de trocar de provedor.
+O receptor aceita somente a conversa privada de `TELEGRAM_CHAT_ID`, incluindo o
+ID do remetente. O bot é pessoal; outros alunos precisam da própria configuração.
+Os agentes consultam todas as matérias quando necessário e preparam arquivos em
+`.local/activities/`, ignorada pelo Git. Pedir ajuda ou resolver uma atividade não
+autoriza sua entrega: o agente recebe instruções para exigir um pedido explícito
+que identifique atividade e conteúdo aprovado antes de enviar ao Canvas.
+
+### Codex com assinatura ChatGPT (padrão)
+
+1. Instale o [Codex CLI](https://developers.openai.com/codex/cli/) e entre com ChatGPT:
+
+   ```sh
+   codex login
+   codex login status
+   ```
+
+2. Conclua `uv sync --locked` e configure Canvas e Telegram no `.env`. Não precisa
+   de `OPENAI_API_KEY`. O receptor verifica a autenticação `chatgpt` e recusa API key.
+3. Prepare ou inicie o serviço no macOS:
+
+   ```sh
+   uv run canvas-agent prepare --provider codex
+   uv run canvas-agent start --provider codex
+   uv run canvas-agent status --provider codex
+   ```
+
+   `start` instala um LaunchAgent somente desse projeto, sem credenciais no plist.
+   Ele inicia na sessão do macOS e reinicia em caso de falha. Não é necessário
+   deixar Terminal, ChatGPT ou um chat do Codex aberto. `prepare` monta a instalação
+   privada e suas dependências, sem ativar o receptor.
+   O runtime fica em `~/Library/Application Support/CanvasMCP/`, para que o launchd
+   possa iniciá-lo quando o checkout está em Documents/Desktop. Ele mantém uma
+   instalação local e uma cópia privada do `.env`, com permissão `600`; os links
+   em `.local/codex-agent/` e `.local/activities/` permitem ver estado e trabalhos
+   a partir do repo. O `.env` da raiz é a fonte de configuração. Após alterar código,
+   dependências ou credenciais, use `stop`, `uv sync --locked` e `start` para atualizar
+   essa instalação. Na primeira migração, diretórios anteriores são preservados
+   como backups privados em `.local/`. Isso não publica nem hospeda o projeto.
+4. No bot, envie `/start`, depois, por exemplo: `Explique a atividade deste link:
+   https://canvas.example.edu/courses/123/assignments/456`. Você também pode citar
+   a mensagem do lembrete ao responder. A conversa é retomada após reiniciar.
+5. Use `/status` para consultar, `/cancel` para interromper e `/reset` para uma
+   nova conversa. Quando aparecer um pedido de permissão, responda
+   `/approve CÓDIGO` ou `/deny CÓDIGO`; vale para aquela solicitação e expira em
+   15 minutos. Para uma pergunta estruturada, use `/answer CÓDIGO resposta`.
+6. Para parar e retirar o serviço, preservando histórico e arquivos:
+
+   ```sh
+   uv run canvas-agent stop --provider codex
+   ```
+
+Em Linux ou para diagnosticar no Terminal, use `uv run canvas-agent run --provider codex`;
+esse processo precisa continuar rodando. Em outros sistemas, os comandos de
+serviço requerem adaptação ao supervisor local. O receptor usa o protocolo
+[Codex App Server](https://learn.chatgpt.com/docs/app-server) por stdio, sem porta
+pública. Esta integração depende da versão instalada; foi verificada com Codex
+CLI 0.162.1. Texto e arquivos solicitados chegam ao Telegram; entrada de anexos,
+áudio e imagens pelo bot ainda não é suportada no receptor Codex.
+
+### Claude Code com assinatura Claude
+
+1. Instale Claude Code atualizado e [Bun](https://bun.sh/docs/installation).
+   Abra `claude` neste diretório, entre com `/login` usando sua assinatura e aceite
+   o diálogo de confiança do projeto. O receptor recusa autenticação por API key.
+2. Instale o plugin oficial neste projeto:
+
+   ```sh
+   claude plugin install telegram@claude-plugins-official --scope local
+   ```
+
+3. Com o receptor Codex parado e o `.env` preenchido, execute:
+
+   ```sh
+   uv run canvas-agent start --provider claude
+   uv run canvas-agent status --provider claude
+   ```
+
+   Para executar em primeiro plano, use `uv run canvas-agent run --provider claude`.
+   O projeto gera configurações privadas de acesso e MCP em `.local/agent/`.
+   Como workers em segundo plano não encaminham qualquer variável do shell,
+   ele gera uma cópia privada apenas do token do Telegram no `.env` do plugin,
+   com permissão `600`. O `.env` da raiz continua sendo a fonte de configuração;
+   após trocar o token, pare e inicie o receptor para atualizar essa cópia.
+   O token do Canvas permanece somente no `.env` da raiz.
+4. Envie um pedido ao bot. As ferramentas de resposta e aprovação são as do plugin
+   oficial; siga os botões/instruções apresentados por ele. Para parar:
+
+   ```sh
+   uv run canvas-agent stop --provider claude
+   ```
+
+Channels é uma funcionalidade em prévia. Em Team/Enterprise, um administrador
+precisa habilitar `channelsEnabled`; se a política bloquear, o status indica
+`blocked_by_organization`. Nesta conta Team, a conexão foi bloqueada por essa
+política; o fluxo de mensagens Claude não pôde ser verificado ao vivo.
+Veja [Channels](https://code.claude.com/docs/en/channels) e
+[sessões em segundo plano](https://code.claude.com/docs/en/agent-view).
+Sessões Claude ociosas podem ser encerradas pelo supervisor: para manter uma
+disponível, abra `claude agents` e fixe a sessão com `Ctrl+T`, conforme o guia oficial.
+O projeto não altera políticas da organização nem habilita bypass de permissões.
+
+### Uso da assinatura e operação
+
+O resumo diário e a espera por mensagens não chamam modelos. Pedidos ao Codex
+consomem os limites da assinatura ChatGPT; pedidos ao Claude usam os limites da
+assinatura Claude, sem chave de API. Trabalhos longos, ferramentas e contexto
+podem consumir bastante quota. O Claude também pode gerar resumos de sessões
+em segundo plano conforme o funcionamento de seu supervisor.
+O bot não inicia uma atividade apenas porque ela apareceu no lembrete.
+Na primeira instalação do receptor Codex, pedidos antigos são descartados;
+envie `/start` novamente. Após uma falha, ele preserva a conversa e nunca repete
+automaticamente o pedido interrompido. Confira uma entrega no Canvas antes de
+pedir para repeti-la. Envios ao Telegram também não são repetidos automaticamente.
+
+Logs e estado ficam em `.local/codex-agent/` ou `.local/agent/`. Se o login expirar,
+pare o receptor, renove o login pelo cliente e inicie novamente. Nunca envie esses
+arquivos ou o `.env` ao Telegram. Os comandos de instalação não ativam serviços;
+`canvas-agent start` e `configure_github.py --activate` são as ações explícitas de ativação.
 
 ## Desenvolvimento com agentes de IA
 
