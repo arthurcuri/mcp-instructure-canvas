@@ -54,7 +54,12 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker push "$IMAGE:$GITHUB_REF_NAME-$ARCH"
+          version=$(python scripts/verify_distribution.py --tag "$GITHUB_REF_NAME" --version-only)
+          docker buildx create --name canvas-release --driver docker-container --use
+          docker buildx build --platform "linux/$ARCH" --provenance=false \
+            --output type=registry,oci-mediatypes=true \
+            --build-arg VERSION="$version" --build-arg REVISION="$GITHUB_SHA" \
+            --tag "$IMAGE:$GITHUB_REF_NAME-$ARCH" .
 
   publish:
     needs: container
@@ -88,6 +93,15 @@ jobs:
             --annotation 'index:org.opencontainers.image.licenses=MIT' \
             --tag "$IMAGE:$GITHUB_REF_NAME" --tag "$IMAGE:latest" \
             "$IMAGE:$GITHUB_REF_NAME-amd64" "$IMAGE:$GITHUB_REF_NAME-arm64"
+          docker buildx imagetools inspect --raw "$IMAGE:$GITHUB_REF_NAME" > /tmp/canvas-index.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('/tmp/canvas-index.json').read_text())
+          assert manifest['mediaType'] == 'application/vnd.oci.image.index.v1+json'
+          assert manifest['annotations']['org.opencontainers.image.licenses'] == 'MIT'
+          assert manifest['annotations']['org.opencontainers.image.description']
+          PY
       - name: Publish release assets
         run: |
           set -euo pipefail

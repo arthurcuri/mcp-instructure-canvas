@@ -7,6 +7,8 @@ import json
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from canvas_mcp import __version__
+
 
 async def verify(image: str) -> None:
     parameters = StdioServerParameters(
@@ -25,7 +27,9 @@ async def verify(image: str) -> None:
     )
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as session:
-            await session.initialize()
+            initialized = await session.initialize()
+            if initialized.serverInfo.version != __version__:
+                raise ValueError("A versão anunciada pelo MCP diverge da versão do projeto.")
             tools = (await session.list_tools()).tools
             if len(tools) != 18 or not any(tool.name == "submit_assignment" for tool in tools):
                 raise ValueError("A imagem não registrou o conjunto esperado de ferramentas MCP.")

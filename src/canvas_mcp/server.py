@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from canvas_mcp import __version__
 from canvas_mcp.api import CanvasApi
 from canvas_mcp.client import CanvasClient, CanvasError
 from canvas_mcp.config import Settings
@@ -44,6 +45,7 @@ def create_server(settings: Settings, client: CanvasClient | None = None) -> Fas
 
     mcp = FastMCP(
         "Canvas LMS — API",
+        website_url="https://github.com/arthurcuri/mcp-instructure-canvas",
         instructions=(
             "Canvas local com operações de leitura e escrita conforme as permissões do usuário. "
             "Para a API completa, use search_canvas_operations, get_canvas_operation e então "
@@ -64,6 +66,9 @@ def create_server(settings: Settings, client: CanvasClient | None = None) -> Fas
         lifespan=lifespan,
         log_level="WARNING",
     )
+    # FastMCP does not expose a version argument; its underlying Server does.
+    # Without this, initialize reports the SDK version instead of this project.
+    mcp._mcp_server.version = __version__
     read_only = ToolAnnotations(
         readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True
     )

@@ -8,6 +8,8 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from canvas_mcp import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -25,7 +27,8 @@ async def main(container: str | None = None) -> None:
         )
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as session:
-            await session.initialize()
+            initialized = await session.initialize()
+            assert initialized.serverInfo.version == __version__
             tools = (await session.list_tools()).tools
             assert len(tools) in {14, 18}
             reads = [tool for tool in tools if tool.annotations.readOnlyHint]
@@ -69,6 +72,7 @@ async def main(container: str | None = None) -> None:
                 json.dumps(
                     {
                         "mcp_verified": True,
+                        "version": initialized.serverInfo.version,
                         "tools": len(tools),
                         "read_only_tools": len(reads),
                         **results,

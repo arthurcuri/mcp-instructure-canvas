@@ -9,6 +9,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.server.fastmcp.exceptions import ToolError
 
+from canvas_mcp import __version__
 from canvas_mcp.client import CanvasClient
 from canvas_mcp.server import create_server
 
@@ -60,7 +61,8 @@ async def test_stdio_handshake_and_tool_errors_work_without_network(tmp_path):
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
-            await session.initialize()
+            initialized = await session.initialize()
+            assert initialized.serverInfo.version == __version__
             tools = await session.list_tools()
             assert len(tools.tools) == 18
             result = await session.call_tool("get_assignment", {"assignment_id": -1})

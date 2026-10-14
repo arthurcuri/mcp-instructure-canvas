@@ -17,7 +17,7 @@
 Um único repositório reúne três funcionalidades independentes. A instância é
 configurável; os exemplos usam o Canvas da PUC Minas.
 
-**Versão 0.5.1** · [Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) ·
+**Versão 0.5.2** · [Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) ·
 [Changelog](CHANGELOG.md) · [Pacotes e Docker](docs/packages.md) ·
 [Validação ponta a ponta](docs/validation.md)
 

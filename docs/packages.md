@@ -13,13 +13,13 @@ MCP de forma independente, sem copiar dados pessoais para uma imagem ou release.
 ## Instalar o wheel
 
 1. Baixe o `.whl` e `SHA256SUMS` da release desejada.
-2. Confira o hash do wheel: `shasum -a 256 mcp_instructure_canvas-0.5.1-py3-none-any.whl`
+2. Confira o hash do wheel: `shasum -a 256 mcp_instructure_canvas-0.5.2-py3-none-any.whl`
    no macOS, ou `sha256sum` no Linux. Compare a linha correspondente em SHA256SUMS.
 3. Em um ambiente Python 3.11+:
 
    ```sh
    python3 -m venv .venv
-   .venv/bin/pip install ./mcp_instructure_canvas-0.5.1-py3-none-any.whl
+   .venv/bin/pip install ./mcp_instructure_canvas-0.5.2-py3-none-any.whl
    .venv/bin/canvas-mcp-server --version
    ```
 
@@ -35,8 +35,8 @@ Não há publicação PyPI nesta release: os arquivos Python vêm do GitHub Rele
 Com o Docker iniciado e seu `.env` privado preenchido, execute:
 
 ```sh
-docker pull ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.1
-docker run --rm -i --env-file .env ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.1
+docker pull ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2
+docker run --rm -i --env-file .env ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2
 ```
 
 O processo usa stdio; iniciado sozinho, fica esperando mensagens MCP. Não publica
@@ -52,7 +52,7 @@ Exemplo de cliente compatível com JSON:
       "args": [
         "run", "--rm", "-i",
         "--env-file", "/caminho/privado/.env",
-        "ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.1"
+        "ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2"
       ]
     }
   }
@@ -74,9 +74,11 @@ configuração JSON, informe UID/GID e caminhos absolutos já resolvidos.
 
 ### Visibilidade do primeiro pacote
 
-O GitHub cria o primeiro pacote GHCR como privado. O proprietário deve abrir
-**Packages → pacote → Package settings → Change visibility → Public** para
-permitir download sem login. Publicar a imagem não altera o login do Codex/Claude.
+Esta distribuição foi verificada com download anônimo e está pública. Se um
+fork ou uma primeira publicação resultar em pacote privado, o proprietário pode
+abrir **Packages → pacote → Package settings → Change visibility → Public** para
+permitir download sem login. A visibilidade precisa ser conferida na publicação;
+publicar a imagem não altera o login do Codex/Claude.
 Veja [visibilidade](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
 
 ## Publicar uma versão
@@ -87,8 +89,8 @@ Veja [visibilidade](https://docs.github.com/en/packages/learn-github-packages/co
 3. Crie e envie a tag da versão, por exemplo:
 
    ```sh
-   git tag v0.5.1
-   git push origin v0.5.1
+   git tag v0.5.2
+   git push origin v0.5.2
    ```
 
 4. O workflow **Release and GitHub Packages** valida a tag, testa o MCP em

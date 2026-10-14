@@ -3,6 +3,14 @@
 Este projeto usa versionamento semântico. Até a versão 1.0, interfaces podem mudar
 entre versões menores; as instruções de migração aparecem nas notas da release.
 
+## 0.5.2 — 2026-10-14
+
+- O handshake MCP anuncia a versão do projeto, em vez da versão do SDK.
+- Publicação OCI preserva descrição, licença e origem no índice multiarch do GHCR;
+  o workflow verifica esses metadados antes de criar a release.
+- Validação do wheel/imagem baixados e confirmação da resposta final pelo usuário.
+- Documentação de visibilidade ajustada após confirmar download público sem login.
+
 ## 0.5.1 — 2026-10-14
 
 - Distribuição do MCP pelo GitHub Container Registry para Linux amd64/arm64,

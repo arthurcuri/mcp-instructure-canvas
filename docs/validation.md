@@ -12,16 +12,20 @@ contém tokens, IDs de chat, enunciados, nomes de alunos ou entregas pessoais.
 | Setup | Provedor/conta, cancelamento, salvar sem iniciar, troca e modo | Testes simulados passam; login só abre após a escolha |
 | Escritas Canvas e automático | HTTP/modelos simulados, verificação de entrega e ledger | Testes passam; nenhuma entrega real usada como teste |
 | Claude Telegram | Implementação oficial Channels e testes simulados | Não validado ao vivo: política Team bloqueou Channels |
-| Imagem MCP e distribuições | Versão, protocolo stdio, catálogo offline e ausência de arquivos privados | Verificados antes de publicar pelo workflow de release |
+| Imagem MCP e distribuições | Versão, protocolo stdio, catálogo offline e ausência de arquivos privados | Passou em amd64 e arm64 pelo workflow de release |
+| MCP Docker → Canvas real | Mesmas leituras da instalação local, com o `.env` privado | Passou; prazos de todas as matérias coincidiram com o agente/lembrete |
+| Publicação GHCR | Consulta anônima ao manifest da imagem | Passou; download público sem autenticação |
 
 Execução de lembrete validada:
 [Daily Canvas reminder](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38508719491).
+Release e testes dos pacotes:
+[Release and GitHub Packages](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38510052772).
 O workflow permanece diário, em `America/Sao_Paulo`; o semanal está desativado
 nesta instalação. O agendador pode atrasar, conforme as regras do GitHub Actions.
 
 No teste da conversa, o Codex foi autenticado com ChatGPT. O histórico persistido
 registrou uma chamada `get_due_assignments` concluída, com os argumentos acima,
-e um turno concluído com resposta final. A inspeção mostrou apenas status,
+e um turno concluído com resposta final, cuja chegada foi confirmada pelo usuário. A inspeção mostrou apenas status,
 nomes de ferramentas e contagens; não publicou conteúdo da matéria.
 
 ## Reproduzir na sua instalação
@@ -34,7 +38,7 @@ uv run canvas-agent status
 ```
 
 Para verificar também o Canvas através da imagem, com seu `.env` local e Docker
-ativo, use `uv run python scripts/verify_mcp.py --container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.1`.
+ativo, use `uv run python scripts/verify_mcp.py --container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2`.
 
 O teste MCP ao vivo é de leitura. Para a entrada real do Telegram, o próprio
 dono do chat envia um pedido de consulta ao bot; a Bot API não permite ao servidor
