@@ -13,13 +13,13 @@ MCP de forma independente, sem copiar dados pessoais para uma imagem ou release.
 ## Instalar o wheel
 
 1. Baixe o `.whl` e `SHA256SUMS` da release desejada.
-2. Confira o hash do wheel: `shasum -a 256 mcp_instructure_canvas-0.5.2-py3-none-any.whl`
+2. Confira o hash do wheel: `shasum -a 256 mcp_instructure_canvas-0.5.3-py3-none-any.whl`
    no macOS, ou `sha256sum` no Linux. Compare a linha correspondente em SHA256SUMS.
 3. Em um ambiente Python 3.11+:
 
    ```sh
    python3 -m venv .venv
-   .venv/bin/pip install ./mcp_instructure_canvas-0.5.2-py3-none-any.whl
+   .venv/bin/pip install ./mcp_instructure_canvas-0.5.3-py3-none-any.whl
    .venv/bin/canvas-mcp-server --version
    ```
 
@@ -35,8 +35,8 @@ Não há publicação PyPI nesta release: os arquivos Python vêm do GitHub Rele
 Com o Docker iniciado e seu `.env` privado preenchido, execute:
 
 ```sh
-docker pull ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2
-docker run --rm -i --env-file .env ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2
+docker pull ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3
+docker run --rm -i --env-file .env ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3
 ```
 
 O processo usa stdio; iniciado sozinho, fica esperando mensagens MCP. Não publica
@@ -52,7 +52,7 @@ Exemplo de cliente compatível com JSON:
       "args": [
         "run", "--rm", "-i",
         "--env-file", "/caminho/privado/.env",
-        "ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2"
+        "ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3"
       ]
     }
   }
@@ -89,8 +89,8 @@ Veja [visibilidade](https://docs.github.com/en/packages/learn-github-packages/co
 3. Crie e envie a tag da versão, por exemplo:
 
    ```sh
-   git tag v0.5.2
-   git push origin v0.5.2
+   git tag v0.5.3
+   git push origin v0.5.3
    ```
 
 4. O workflow **Release and GitHub Packages** valida a tag, testa o MCP em

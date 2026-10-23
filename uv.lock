@@ -360,11 +360,12 @@ wheels = [
 
 [[package]]
 name = "mcp-instructure-canvas"
-version = "0.5.2"
+version = "0.5.3"
 source = { editable = "." }
 dependencies = [
     { name = "graphql-core" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "mcp" },
     { name = "python-dotenv" },
 ]
@@ -380,6 +381,7 @@ dev = [
 requires-dist = [
     { name = "graphql-core", specifier = ">=3.2.6,<4" },
     { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "jsonschema", specifier = ">=4.20,<5" },
     { name = "mcp", specifier = ">=1.28,<2" },
     { name = "python-dotenv", specifier = ">=1.1,<2" },
 ]

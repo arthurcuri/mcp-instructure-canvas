@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-instructure-canvas"
-version = "0.5.2"
+version = "0.5.3"
 description = "Canvas LMS MCP with API reads/writes, Telegram reminders and local Codex/Claude agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,7 @@ dependencies = [
     "mcp>=1.28,<2",
     "python-dotenv>=1.1,<2",
     "graphql-core>=3.2.6,<4",
+    "jsonschema>=4.20,<5",
 ]
 
 [project.urls]

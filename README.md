@@ -17,7 +17,7 @@
 Um único repositório reúne três funcionalidades independentes. A instância é
 configurável; os exemplos usam o Canvas da PUC Minas.
 
-**Versão 0.5.2** · [Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) ·
+**Versão 0.5.3** · [Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) ·
 [Changelog](CHANGELOG.md) · [Pacotes e Docker](docs/packages.md) ·
 [Validação ponta a ponta](docs/validation.md)
 
@@ -535,13 +535,34 @@ verificada com Codex CLI 0.162.1.
 | `/cancel` | Interrompe o pedido ativo | Não inicia nova tarefa |
 | `/reset` | A próxima mensagem inicia outra conversa; preserva arquivos | Não |
 | `/approve CÓDIGO`, `/deny CÓDIGO` | Responde à permissão daquela operação | Não inicia nova tarefa |
-| `/answer CÓDIGO resposta` | Responde a uma pergunta estruturada | Continua a tarefa existente |
+| `Sim` / `Não` durante uma confirmação | Aprova/nega a única operação pendente; pode usar Responder na solicitação específica | Continua o pedido existente |
+| `/answer CÓDIGO resposta` | Responde a uma pergunta; confirmações simples aceitam `sim`/`não` | Continua a tarefa existente |
+| Texto durante uma pergunta pendente | Responde à pergunta exibida | Continua a tarefa existente |
+| Texto durante a execução | Acrescenta contexto/correções ao mesmo pedido | Continua a tarefa existente |
 | Texto com seu pedido | Inicia trabalho/conversa | **Sim** |
 
 Permissões expiram em 15 minutos e tarefas do receptor têm limite de 30 minutos.
 Uma conversa inicial sem histórico é recuperada automaticamente; conversas reais
 removidas não são descartadas silenciosamente. Requests interrompidos não são
 reexecutados ao reiniciar. A recuperação não repete entregas.
+
+**Aprovar sem JSON:** quando o Codex pedir permissão para baixar um arquivo ou
+executar um comando, responda **Sim** ou **Não**. Se houver várias solicitações,
+use **Responder** na solicitação desejada ou o comando com o código correspondente.
+Cada resposta vale somente para aquela operação; códigos antigos/expirados não
+aprovam uma solicitação nova. Um formulário que pede dados de verdade continua
+exigindo os campos indicados; uma confirmação sem campos não exige JSON.
+
+**Contexto da atividade:** o bot retoma a conversa do Codex e guarda uma referência
+privada à atividade selecionada. O nome/link na mensagem atual tem prioridade
+sobre trabalhos antigos e sobre a matéria padrão do MCP. O lembrete enviado pelo
+GitHub Actions não entra automaticamente no histórico do agente: use **Responder**
+no lembrete ou envie o link da atividade. Se disser apenas “essa atividade” sem
+citação/link, o receptor consulta os prazos atuais de todas as matérias; havendo
+várias candidatas, o agente precisa perguntar qual. Essa consulta usa somente
+leituras Canvas. A referência guardada ajuda a continuar o trabalho; ela não
+concede autorização de envio nem inicia trabalhos sozinha. `/reset` limpa essa
+referência e inicia outra conversa, preservando os arquivos locais.
 
 ### Claude Code com assinatura Claude
 
@@ -669,6 +690,8 @@ As [documentações de autenticação Codex](https://learn.chatgpt.com/docs/auth
 | Escolha salva diferente do receptor rodando | Foi escolhido salvar sem iniciar; execute `setup` novamente e revise a ativação |
 | Conversa real removida | `/reset` inicia outra; preserva trabalhos. Não repita uma entrega sem conferir o Canvas |
 | Bot não responde a `/start` | Inicie o receptor; confirme `canvas-agent status`, chat privado, Mac/internet e apenas um consumidor |
+| Respondi “Sim”, mas pediu JSON ou ficou aguardando | Atualize para 0.5.3 ou posterior e reinicie o receptor. Confirmações sem campos aceitam Sim/Não; códigos expirados precisam de um novo pedido |
+| O agente escolheu uma atividade antiga | Use Responder no lembrete ou envie o link atual. `/status` mostra a referência selecionada; não precisa apagar o histórico |
 | Telegram HTTP 409 | Outro poller ou webhook disputa o bot; pare o concorrente |
 | Canvas 401/403 | Confira validade do token/permissões institucionais e rode `canvas-mcp-server --test` |
 | Claude `blocked_by_organization` | Administrador deve habilitar Channels. Use um provedor permitido |

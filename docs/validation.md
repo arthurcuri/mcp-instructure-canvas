@@ -29,6 +29,26 @@ registrou uma chamada `get_due_assignments` concluída, com os argumentos acima,
 e um turno concluído com resposta final, cuja chegada foi confirmada pelo usuário. A inspeção mostrou apenas status,
 nomes de ferramentas e contagens; não publicou conteúdo da matéria.
 
+## Aprovações e contexto — 23/10/2026
+
+A versão 0.5.3 foi verificada com testes simulados para respostas Sim/Não,
+formulários com campos, expiração, múltiplas solicitações, outro usuário,
+correções no turno ativo e preservação da referência à atividade. O relay usa
+os contratos de elicitação e `turn/steer` do
+[Codex App Server](https://learn.chatgpt.com/docs/app-server).
+
+O protocolo MCP 0.5.3 passou na consulta autenticada somente de leitura, mantendo
+18 ferramentas e o conteúdo completo nos detalhes. A consulta dos próximos sete
+dias incluiu todas as matérias. Wheel e arquivo fonte passaram na auditoria de
+versões, catálogo e exclusão de arquivos privados.
+
+O runtime pessoal foi atualizado e reiniciado com conversa/arquivos preservados,
+Telegram conectado e modo automático desativado. A inspeção do histórico mostrou
+que os turnos anteriores continuavam salvos; o lembrete enviado na nuvem não é
+uma mensagem de entrada para o agente. O teste humano de uma nova aprovação pelo
+Telegram é separado dos testes simulados; nenhuma entrega Canvas é usada para
+validar a correção.
+
 ## Reproduzir na sua instalação
 
 ```sh

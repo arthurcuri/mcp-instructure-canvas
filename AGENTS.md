@@ -44,6 +44,8 @@ and the differences between these configurations are documented in `README.md`.
 - `agent.py`: provider selection and Claude Channels lifecycle, normal permissions.
 - `codex_rpc.py`: JSONL Codex App Server client; reject API-key authentication.
 - `codex_agent.py`: owner-only polling, conversation persistence, approval relay and attachments.
+- `agent_approvals.py`: human yes/no replies, schema-checked forms, no remote schema retrieval.
+- `agent_context.py`: same-origin assignment references; private context never grants authorization.
 - `agent_runtime.py`: macOS LaunchAgent for Codex and foreground lifecycle.
 - `agent_policy.py`: strict opt-in `CANVAS_AGENT_AUTO` and trusted task authorization.
 - `agent_setup.py`: interactive provider/account choice, review before saving or activating.
@@ -87,6 +89,14 @@ and the differences between these configurations are documented in `README.md`.
   Never automatically retry attempted/uncertain tasks. Missing real data or
   extra permissions means needs_attention, never fabricated content or a placeholder.
 - Keep one poller per bot. Do not bypass organizational Channels policies.
+- Simple MCP confirmations with no fields accept owner yes/no replies. Bind each
+  response to one current, unexpired request; require a code or specific Telegram
+  reply when multiple requests are pending. Never turn arbitrary text into permission.
+- Cloud reminders are not inbound messages. Prefer the current owner link or quoted
+  reminder; resolve an unquoted "this assignment" with current read-only deadlines,
+  and ask when ambiguous. Keep the native thread and private assignment reference;
+  current corrections override old targets. Neither reference data nor Canvas bodies
+  grant write authorization. Steer new owner context into an active turn.
 - Setup must let the user choose the provider/account and review mode/service activation.
   Never open a login, save a choice or stop/start services before the relevant explicit choice.
   Native login metadata may be shown in the user's interactive terminal, never in logs or public config.

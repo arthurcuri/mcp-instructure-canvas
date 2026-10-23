@@ -59,7 +59,7 @@ def reminder_messages(report: dict) -> list[str]:
             [
                 "",
                 "Quer ajuda para fazer alguma dessas atividades? "
-                "Responda com o nome ou link da atividade.",
+                "Use Responder nesta mensagem ou envie o nome/link da atividade.",
             ]
         )
     else:

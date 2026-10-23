@@ -253,6 +253,230 @@ async def test_questions_route_answers_back_to_the_same_rpc(bridge):
     bridge.rpc.request.assert_not_called()
 
 
+def permission_event(*, method="mcpServer/elicitation/request", identifier=99, schema=None):
+    return {
+        "id": identifier,
+        "method": method,
+        "params": {
+            "threadId": "thread",
+            "turnId": "turn",
+            "mode": "form",
+            "message": 'Allow tool "download_canvas_file"?',
+            "command": "python check.py",
+            "requestedSchema": schema or {"type": "object", "properties": {}},
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "reply",
+    ["Sim", "yes i allow", "/answer yes i allow", "/answer {code} yes i allow", "/approve {code}"],
+)
+async def test_empty_mcp_confirmation_accepts_human_reply_without_json(bridge, reply):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(permission_event())
+    code = next(iter(bridge.pending))
+    prompt = bridge.telegram._call.call_args.args[1]["text"]
+    assert "Sim ou Não" in prompt and "JSON" not in prompt
+    await bridge.handle_message(message(reply.format(code=code)))
+    bridge.rpc.respond.assert_awaited_once_with(99, {"action": "accept", "content": {}})
+    bridge.rpc.request.assert_not_called()
+    assert not bridge.pending
+
+
+@pytest.mark.parametrize("reply", ["Não", "/deny {code}", "/answer {code} não"])
+async def test_empty_mcp_confirmation_denies_without_running_a_new_turn(bridge, reply):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(permission_event())
+    code = next(iter(bridge.pending))
+    await bridge.handle_message(message(reply.format(code=code)))
+    bridge.rpc.respond.assert_awaited_once_with(99, {"action": "decline", "content": None})
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_plain_yes_also_answers_shell_permission_and_cannot_be_reused(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(permission_event(method="item/commandExecution/requestApproval"))
+    await bridge.handle_message(message("Sim", sender=999))
+    bridge.rpc.respond.assert_not_called()
+    await bridge.handle_message(message("Sim"))
+    await bridge.handle_message(message("Sim"))
+    bridge.rpc.respond.assert_awaited_once_with(99, {"decision": "accept"})
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_general_mcp_form_is_not_a_permission_and_validates_required_content(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    schema = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
+    await bridge.handle_event(permission_event(schema=schema))
+    code = next(iter(bridge.pending))
+    await bridge.handle_message(message("Sim"))
+    await bridge.handle_message(message("/approve " + code))
+    await bridge.handle_message(message("/answer " + code + " {}"))
+    bridge.rpc.respond.assert_not_called()
+    await bridge.handle_message(message('{"name": "Maria"}'))
+    bridge.rpc.respond.assert_awaited_once_with(
+        99, {"action": "accept", "content": {"name": "Maria"}}
+    )
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_multiple_pending_requests_require_code_or_reply_to_specific_message(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(permission_event(identifier=99))
+    first_code = next(iter(bridge.pending))
+    bridge.telegram._call.return_value = {"message_id": 2}
+    await bridge.handle_event(permission_event(identifier=100))
+    await bridge.handle_message(message("Sim"))
+    await bridge.handle_message(message("/approve 000000"))
+    bridge.rpc.respond.assert_not_called()
+    incoming = message("Sim")
+    incoming["reply_to_message"] = {"message_id": 1}
+    await bridge.handle_message(incoming)
+    bridge.rpc.respond.assert_awaited_once_with(99, {"action": "accept", "content": {}})
+    assert first_code not in bridge.pending and len(bridge.pending) == 1
+
+
+async def test_resolved_or_expired_prompt_never_accepts_a_late_yes(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(permission_event())
+    code = next(iter(bridge.pending))
+    bridge.pending[code]["expires"] = time.monotonic() - 1
+    await bridge.handle_message(message("Sim"))
+    await bridge.handle_message(message("/approve " + code))
+    bridge.rpc.respond.assert_not_called()
+    await bridge.handle_event({"method": "serverRequest/resolved", "params": {"requestId": 99}})
+    assert not bridge.pending
+    await bridge.handle_message(message("Sim"))
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_plain_question_response_continues_same_request(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_event(
+        {
+            "id": 77,
+            "method": "item/tool/requestUserInput",
+            "params": {
+                "threadId": "thread",
+                "questions": [{"id": "format", "question": "Formato?"}],
+            },
+        }
+    )
+    await bridge.handle_message(message("Markdown"))
+    bridge.rpc.respond.assert_awaited_once_with(
+        77, {"answers": {"format": {"answers": ["Markdown"]}}}
+    )
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_message_during_work_steers_existing_turn_and_keeps_history(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    await bridge.handle_message(
+        message("Estou falando de https://canvas.example.test/courses/7/assignments/8")
+    )
+    call = bridge.rpc.request.call_args
+    assert call.args[0] == "turn/steer"
+    assert call.args[1]["threadId"] == "thread" and call.args[1]["expectedTurnId"] == "turn"
+    assert "assignments/8" in call.args[1]["input"][0]["text"]
+    assert bridge.state["assignment_context"]["assignment_id"] == 8
+    assert bridge.turn_id == "turn"
+
+
+async def test_explicit_current_assignment_overrides_old_context_and_old_quoted_message(bridge):
+    bridge.save(assignment_context={"course_id": 1, "assignment_id": 2})
+    incoming = message("https://canvas.example.test/courses/7/assignments/8")
+    incoming["reply_to_message"] = {"text": "https://canvas.example.test/courses/1/assignments/2"}
+    await bridge.contextual_input(incoming, incoming["text"])
+    assert bridge.state["assignment_context"]["assignment_id"] == 8
+    reloaded = CodexBridge(bridge.project, bridge.env_file, "/bin/codex")
+    assert reloaded.state["assignment_context"]["assignment_id"] == 8
+    assert "previous_assignment" in await reloaded.contextual_input(message("Continue"), "Continue")
+    await bridge.handle_message(message("/reset"))
+    assert bridge.state["assignment_context"] is None
+
+
+@pytest.mark.parametrize("count", [0, 1, 2])
+async def test_unquoted_reminder_reference_reads_all_courses_and_never_selects_old_default(
+    bridge, monkeypatch, count
+):
+    from canvas_mcp.codex_agent import collect_report
+
+    collect = AsyncMock(
+        spec=collect_report,
+        return_value={
+            "assignments": [
+                {
+                    "id": 8 + index,
+                    "course_id": 7,
+                    "name": "Current work",
+                    "html_url": f"https://canvas.example.test/courses/7/assignments/{8 + index}",
+                }
+                for index in range(count)
+            ]
+        },
+    )
+    monkeypatch.setattr("canvas_mcp.codex_agent.collect_report", collect)
+    bridge.save(assignment_context={"course_id": 1, "assignment_id": 2})
+    text = "Faça essa atividade por completo e envie"
+    result = await bridge.contextual_input(message(text), text)
+    collect.assert_awaited_once_with(bridge.canvas, all_courses=True)
+    assert "current_deadlines" in result
+    if count == 1:
+        assert bridge.state["assignment_context"]["assignment_id"] == 8
+    else:
+        assert bridge.state["assignment_context"] is None
+        assert '"selected_assignment": null' in result
+
+
+async def test_reminder_context_failure_never_uses_old_course_or_starts_a_turn(bridge, monkeypatch):
+    monkeypatch.setattr(
+        "canvas_mcp.codex_agent.collect_report", AsyncMock(side_effect=ValueError("secret"))
+    )
+    bridge.save(assignment_context={"course_id": 1, "assignment_id": 2})
+    with pytest.raises(CodexError) as error:
+        await bridge.contextual_input(message("Faça essa atividade"), "Faça essa atividade")
+    assert error.value.category == "assignment_context_unavailable"
+    assert "secret" not in str(error.value)
+    bridge.turn_id = "still-working"
+    await bridge.handle_message(message("Faça essa atividade"))
+    assert bridge.turn_id == "still-working"
+    assert bridge.state["assignment_context"] is None
+    bridge.rpc.request.assert_not_called()
+
+
+async def test_continuation_keeps_selected_assignment_without_refreshing_to_another_deadline(
+    bridge, monkeypatch
+):
+    collect = AsyncMock()
+    monkeypatch.setattr("canvas_mcp.codex_agent.collect_report", collect)
+    bridge.save(assignment_context={"course_id": 7, "assignment_id": 8})
+    text = "Continue essa atividade"
+    result = await bridge.contextual_input(message(text), text)
+    assert '"assignment_id": 8' in result
+    collect.assert_not_called()
+
+
+async def test_approval_prompt_masks_signed_download_url(bridge):
+    bridge.save(thread_id="thread")
+    bridge.turn_id = "turn"
+    event = permission_event(method="item/commandExecution/requestApproval")
+    event["params"]["command"] = (
+        "curl 'https://canvas.example.test/files/1/download?download_frd=1&verifier=signed-secret'"
+    )
+    await bridge.handle_event(event)
+    prompt = "".join(call.args[1]["text"] for call in bridge.telegram._call.call_args_list)
+    assert "signed-secret" not in prompt and "files/1/download" in prompt
+
+
 async def test_completed_turn_sends_final_text_but_not_reasoning_or_commentary(bridge):
     bridge.save(thread_id="thread")
     bridge.turn_id = "turn"

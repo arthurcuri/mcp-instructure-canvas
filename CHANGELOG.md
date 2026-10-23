@@ -3,6 +3,20 @@
 Este projeto usa versionamento semântico. Até a versão 1.0, interfaces podem mudar
 entre versões menores; as instruções de migração aparecem nas notas da release.
 
+## 0.5.3 — 2026-10-23
+
+- Confirmações MCP sem campos aceitam Sim/Não no Telegram e comandos de aprovação,
+  sem exigir JSON. Formulários com dados continuam validando o schema localmente.
+- Respostas ficam vinculadas à solicitação atual, com proteção contra códigos
+  expirados, outro usuário, várias solicitações e permissões já resolvidas.
+- Mensagens durante uma tarefa corrigem o pedido ativo pelo `turn/steer`.
+- Referência privada à atividade selecionada preservada junto à conversa;
+  links atuais/citações têm prioridade sobre trabalhos antigos e curso padrão.
+- “Essa atividade” sem citação/link consulta os prazos atuais de todas as matérias,
+  sem escolher silenciosamente um alvo antigo quando há ambiguidade.
+- URLs assinadas são ocultadas nas mensagens de aprovação. O modo automático
+  continua desativado por padrão; nenhuma permissão geral foi adicionada.
+
 ## 0.5.2 — 2026-10-14
 
 - O handshake MCP anuncia a versão do projeto, em vez da versão do SDK.
