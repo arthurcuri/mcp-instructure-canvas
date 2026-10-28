@@ -18,14 +18,14 @@ An independent, MIT-licensed [Model Context Protocol](https://modelcontextprotoc
 
 [Português (Brasil)](README.pt-BR.md) · [Installation](docs/setup.md) · [API guide](docs/api.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-**Version 0.6.0** · [Release notes](docs/releases/0.6.0.md) · [Packages and Docker](docs/packages.md)
+**Version 0.7.0** · [Release notes](docs/releases/0.7.0.md) · [Packages and Docker](docs/packages.md)
 
 ## What you can do
 
 | Feature | Capabilities | Runs on |
 |---|---|---|
 | Canvas MCP | Read courses, assignments, rubrics, modules, pages, and personal submission status; discover REST operations; use GraphQL and file transfers | Your MCP client's local process |
-| Reminders, optional | Read deadlines and send summaries to your Telegram chat, without model calls | GitHub Actions or your own scheduler |
+| Reminders, optional | Send deadlines and weekly announcements, forum activity, pages, files, and other course updates to Telegram, without model calls | GitHub Actions or your own scheduler |
 | Telegram agent, optional | Ask a local Codex or Claude Code agent for help; prepare files and submit work when authorized | Your computer, using your provider account |
 
 The server exposes **18 tools**, or **14 with `CANVAS_READ_ONLY=true`**. Its bundled catalog contains **1,118 documented REST operations in 144 groups**, captured on October 13, 2026. Operations remain subject to your Canvas account's permissions and institution settings. Catalog coverage does not mean every operation has been tested against a live institution.

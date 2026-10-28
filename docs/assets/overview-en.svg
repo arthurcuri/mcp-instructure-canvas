@@ -23,7 +23,7 @@
     <text x="62" y="275" fill="#7dd3fc" font-size="13">YOUR CLIENT → CANVAS API</text>
     <circle cx="460" cy="163" r="18" fill="#064e3b"/><text x="460" y="169" text-anchor="middle" fill="#6ee7b7" font-size="17" font-weight="700">2</text>
     <text x="490" y="170" fill="#f8fafc" font-size="20" font-weight="600">Optional reminders</text>
-    <text x="444" y="211" fill="#cbd5e1" font-size="16">Deadline summaries in Telegram</text>
+    <text x="444" y="211" fill="#cbd5e1" font-size="16">Weekly updates and deadlines</text>
     <text x="444" y="235" fill="#94a3b8" font-size="14">GitHub Actions · no model calls</text>
     <text x="444" y="275" fill="#6ee7b7" font-size="13">CLOUD OR LOCAL SCHEDULING</text>
     <circle cx="842" cy="163" r="18" fill="#4c1d95"/><text x="842" y="169" text-anchor="middle" fill="#c4b5fd" font-size="17" font-weight="700">3</text>

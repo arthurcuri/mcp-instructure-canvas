@@ -1,4 +1,4 @@
-"""Weekly deadline snapshot and optional Telegram reminder, without an LLM."""
+"""Private deadline and weekly update snapshots, with optional Telegram delivery."""
 
 import argparse
 import asyncio
@@ -13,7 +13,8 @@ from typing import Literal
 from canvas_mcp.client import CanvasClient, CanvasError
 from canvas_mcp.config import Settings
 from canvas_mcp.notifications import TelegramClient, TelegramSettings
-from canvas_mcp.service import CanvasService
+from canvas_mcp.service import CanvasService, parse_datetime
+from canvas_mcp.updates import CanvasUpdates
 
 
 async def collect_report(
@@ -23,15 +24,27 @@ async def collect_report(
     all_courses: bool = False,
     period: Literal["this_week", "next_7_days"] = "next_7_days",
     include_completed: bool = False,
+    include_updates: bool = False,
 ) -> dict:
     client = CanvasClient(replace(settings, read_only=True))
     try:
-        return await CanvasService(settings, client).get_due_assignments(
+        service = CanvasService(settings, client)
+        report = await service.get_due_assignments(
             course_id=course_id,
             all_courses=all_courses,
             period=period,
             include_completed=include_completed,
         )
+        if include_updates:
+            names = {course["id"]: course for course in (await service.list_courses())["courses"]}
+            courses = [
+                names.get(identifier, {"id": identifier})
+                for identifier in report["courses_checked"]
+            ]
+            report["updates"] = await CanvasUpdates(settings, client).collect(
+                courses, now=parse_datetime(report["checked_at"])
+            )
+        return report
     finally:
         await client.close()
 
@@ -67,6 +80,12 @@ def main() -> int:
     parser.add_argument("--period", choices=["this_week", "next_7_days"], default="next_7_days")
     parser.add_argument("--include-completed", action="store_true")
     parser.add_argument(
+        "--include-updates",
+        action="store_true",
+        help="Include this week's announcements, discussions, pages, files, "
+        "assignments, and events.",
+    )
+    parser.add_argument(
         "--telegram",
         action="store_true",
         help="Send a reminder to the configured chat; "
@@ -84,6 +103,7 @@ def main() -> int:
                 all_courses=args.all_courses,
                 period=args.period,
                 include_completed=args.include_completed,
+                include_updates=args.include_updates,
             )
         )
         if args.output is not None:
@@ -92,6 +112,13 @@ def main() -> int:
                 f"Report saved: {report['count']} assignment(s), "
                 f"{len(report['courses_checked'])} course(s)."
             )
+            if "updates" in report:
+                updates = report["updates"]
+                print(
+                    f"Weekly updates: {updates['count']}; "
+                    f"unavailable sources: {len(updates['source_errors'])}; "
+                    f"undated items: {updates['undated_count']}."
+                )
         elif telegram is None:
             print(json.dumps(report, ensure_ascii=False, indent=2))
         if telegram is not None:

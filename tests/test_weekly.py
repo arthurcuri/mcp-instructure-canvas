@@ -103,6 +103,54 @@ def test_weekly_scope_conflict_is_rejected_before_query(monkeypatch):
     assert error.value.code == 2
 
 
+def test_weekly_update_flag_adds_news_without_changing_deadlines_or_leaking_logs(
+    private_configuration, tmp_path, monkeypatch, capsys
+):
+    recent = datetime.now(UTC).replace(microsecond=0)
+    calls = []
+
+    def handle(request):
+        assert request.method == "GET"
+        calls.append(request.url.path)
+        if request.url.path.endswith("/courses"):
+            data = [{"id": 1, "name": "Private course"}]
+        elif request.url.path.endswith("/announcements"):
+            data = [{"id": 3, "title": "Private announcement", "posted_at": recent.isoformat()}]
+        else:
+            data = []
+        return httpx.Response(200, json=data)
+
+    def canvas(settings):
+        assert settings.read_only is True
+        return CanvasClient(settings, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr("canvas_mcp.weekly.CanvasClient", canvas)
+    output = tmp_path / "report.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "canvas-weekly-check",
+            "--env-file",
+            str(private_configuration),
+            "--include-updates",
+            "--output",
+            str(output),
+        ],
+    )
+    assert main() == 0
+    report = json.loads(output.read_text())
+    assert report["count"] == 0
+    assert report["updates"]["count"] == 1
+    assert report["updates"]["items"][0]["course_name"] == "Private course"
+    assert output.stat().st_mode & 0o777 == 0o600
+    assert len(calls) == 8
+    logs = capsys.readouterr()
+    assert "Weekly updates: 1" in logs.out
+    assert "Private" not in logs.out + logs.err
+    assert "private-test-secret" not in output.read_text()
+
+
 def test_launcher_handles_another_cwd_and_project_paths_with_spaces(tmp_path):
     project = tmp_path / "project with spaces"
     directory = project / "automation"

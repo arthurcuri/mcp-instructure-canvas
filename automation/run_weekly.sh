@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read-only weekly snapshot. Pass --telegram explicitly for configured delivery; no LLM.
+# Read-only deadlines and weekly updates. Pass --telegram for delivery; no LLM.
 set -euo pipefail
 umask 077
 
@@ -25,4 +25,4 @@ fi
 mkdir -p "$CANVAS_PROJECT_DIR/.local"
 exec "$CANVAS_UV_COMMAND" run --locked --directory "$CANVAS_PROJECT_DIR" \
   canvas-weekly-check --env-file "$CANVAS_PROJECT_DIR/.env" \
-  --output "$CANVAS_PROJECT_DIR/.local/weekly-report.json" "$@"
+  --include-updates --output "$CANVAS_PROJECT_DIR/.local/weekly-report.json" "$@"

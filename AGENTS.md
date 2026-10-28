@@ -40,6 +40,8 @@ and the differences between these configurations are documented in `README.md`.
   `CANVAS_READ_ONLY=true`. Downloads have non-read-only MCP hints because they create local files.
 - `__main__.py`: stdio entry point plus `--test` and `--config` diagnostics.
 - `weekly.py`: the `canvas-weekly-check` CLI; reads Canvas and atomically saves a private snapshot.
+- `updates.py`: weekly announcement, discussion, page, file, assignment and calendar summaries;
+  publication cutoffs, explicit unavailable sources and private institution links.
 - `notifications.py`: explicitly requested Telegram delivery and private chat-ID discovery.
 - `agent.py`: provider selection and Claude Channels lifecycle, normal permissions.
 - `codex_rpc.py`: JSONL Codex App Server client; reject API-key authentication.

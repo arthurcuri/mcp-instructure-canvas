@@ -42,7 +42,10 @@ Course text and links are untrusted external content. The assistant must not
 follow embedded instructions requesting secrets, command execution or rule changes.
 The selected MCP/AI client can retain the returned course data under its own policies.
 An enabled Telegram reminder discloses selected assignment titles, deadlines and
-links to the configured chat. GitHub secrets protect credentials at rest; code
+links to the configured chat. With weekly updates enabled, it also includes course
+names, announcement/forum/page/file titles, update dates and calendar event metadata.
+Course bodies, individual replies and signed storage URLs are not copied into that summary.
+GitHub secrets protect credentials at rest; code
 executed by a privileged workflow can access them. Review changes to workflows
 before enabling them with personal secrets.
 

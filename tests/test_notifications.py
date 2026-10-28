@@ -89,6 +89,58 @@ def test_long_reminder_is_split_without_losing_text(report):
     assert "Need help" in messages[-1]
 
 
+def test_weekly_updates_show_without_due_assignments_and_report_incomplete_sources(report):
+    report["count"] = 0
+    report["assignments"] = []
+    report["updates"] = {
+        "count": 1,
+        "start_inclusive": "2026-10-26T00:00:00-03:00",
+        "end_exclusive": "2026-10-28T12:00:00-03:00",
+        "items": [
+            {
+                "kind": "discussion",
+                "course_name": "Course",
+                "title": "New replies <b>stay plain text</b>",
+                "changed_at_local": "2026-10-27T12:00:00-03:00",
+                "html_url": "https://canvas.example.test/courses/1/discussion_topics/2",
+            }
+        ],
+        "undated_count": 2,
+        "source_errors": [{"source": "file", "course_name": "Course", "error": "Access denied."}],
+    }
+    text = "".join(reminder_messages(report))
+    assert "Updates this week: 1" in text
+    assert "New replies <b>stay plain text</b>" in text
+    assert "Some sources could not be checked" in text and "Access denied." in text
+    assert "2 item(s) have no update date" in text
+    assert "items can appear again" in text
+
+
+def test_long_update_summary_is_split_without_losing_unicode_or_links(report):
+    report["updates"] = {
+        "count": 1,
+        "start_inclusive": "2026-10-26T00:00:00-03:00",
+        "end_exclusive": "2026-10-28T12:00:00-03:00",
+        "items": [
+            {
+                "kind": "page",
+                "course_name": "Course",
+                "title": "📚" * 5000,
+                "changed_at_local": "2026-10-27T12:00:00-03:00",
+                "html_url": "https://canvas.example.test/courses/1/pages/notes",
+            }
+        ],
+        "undated_count": 0,
+        "source_errors": [],
+    }
+    messages = reminder_messages(report)
+    assert len(messages) > 1
+    assert all(len(message.encode("utf-16-le")) // 2 < 4096 for message in messages)
+    text = "".join(messages)
+    assert "📚" * 5000 in text
+    assert "https://canvas.example.test/courses/1/pages/notes" in text
+
+
 async def test_setup_lists_only_private_chat_ids_without_sending(telegram_settings):
     def handle(request):
         assert request.url.path.endswith("/getUpdates")

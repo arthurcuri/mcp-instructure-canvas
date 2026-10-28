@@ -64,6 +64,54 @@ def reminder_messages(report: dict) -> list[str]:
         )
     else:
         lines.extend(["", "No pending assignments are due in this period."])
+    updates = report.get("updates")
+    if updates is not None:
+        labels = {
+            "announcement": "Announcement",
+            "discussion": "Discussion topic or replies",
+            "page": "Page",
+            "file": "File",
+            "assignment": "New or updated assignment",
+            "calendar_event": "Calendar event",
+        }
+        start = parse_datetime(updates["start_inclusive"])
+        end = parse_datetime(updates["end_exclusive"])
+        lines.extend(
+            [
+                "",
+                f"Updates this week: {updates['count']}",
+                f"Published/changed: {start:%Y-%m-%d %H:%M} to {end:%Y-%m-%d %H:%M}",
+            ]
+        )
+        for item in updates["items"]:
+            changed = parse_datetime(item["changed_at_local"])
+            lines.extend(
+                [
+                    "",
+                    f"{labels[item['kind']]} · {item['course_name']}: {item['title']}",
+                    f"Published/changed: {changed:%Y-%m-%d at %H:%M}",
+                ]
+            )
+            if item.get("starts_at_local"):
+                starts = parse_datetime(item["starts_at_local"])
+                lines.append(f"Event starts: {starts:%Y-%m-%d at %H:%M}")
+            lines.append(item["html_url"])
+        if not updates["count"]:
+            lines.append("No dated updates found in the checked sources for this week.")
+        if updates["undated_count"]:
+            lines.append(
+                f"{updates['undated_count']} item(s) have no update date and could not be placed "
+                "in this week's summary."
+            )
+        if updates["source_errors"]:
+            lines.extend(["", "Some sources could not be checked:"])
+            for error in updates["source_errors"]:
+                lines.append(
+                    f"{error['course_name']} · {labels[error['source']]}: {error['error']}"
+                )
+        lines.extend(
+            ["", "This is a weekly snapshot; items can appear again in the next daily summary."]
+        )
     # Plain text only. 1,800 code points also fit within Telegram's UTF-16 length limit.
     text = "\n".join(lines)
     return [text[index : index + 1800] for index in range(0, len(text), 1800)]

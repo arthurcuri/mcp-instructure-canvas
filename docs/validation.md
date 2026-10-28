@@ -42,6 +42,19 @@ course bodies or credentials.
 Canvas writes, Telegram delivery, and agent execution were covered by mocked tests
 in this verification. Services and schedules were not activated or restarted.
 
+## October 28, 2026: weekly update summaries
+
+The 0.7.0 implementation passed 212 mocked tests and the standard lint, format,
+shell syntax, build and archive checks. A read-only preview across 12 active courses
+found five dated updates, without Telegram delivery or model calls. Seven file
+sources returned permission errors and eight page sources were unavailable; the
+private snapshot explicitly reported those 15 source failures with
+`updates.complete=false`. No course titles or bodies are published here.
+
+The preview checked all six supported sources. This verifies the available reads
+and partial-result reporting, not access to institution-restricted resources or
+every possible Canvas event. Daily snapshots intentionally repeat weekly items.
+
 ## Reproduce on your own installation
 
 Offline contribution checks are in [CONTRIBUTING.md](../CONTRIBUTING.md). The following commands deliberately access your own configured account:
@@ -54,7 +67,7 @@ uv run canvas-agent status
 
 `verify_mcp.py` uses the first active course, or an explicit `--course-id 12345`. No configured default course is required. With no active courses, it still checks the protocol and all-course deadline query, and reports skipped course-detail checks. It prints counts/status rather than course bodies.
 
-To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.6.0` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
+To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.7.0` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
 
 A manual reminder workflow run sends a real message when bot secrets are configured. That is optional integration work, not a contributor requirement.
 

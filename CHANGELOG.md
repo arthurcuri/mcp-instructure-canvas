@@ -2,6 +2,15 @@
 
 This project follows semantic versioning. Before 1.0, minor releases may change interfaces; migration guidance appears in release notes.
 
+## 0.7.0 — 2026-10-28
+
+- Add `--include-updates` to the weekly CLI and enable it in daily/weekly scheduling templates and the local wrapper.
+- Include this week's announcements, forum topics/replies, pages, files, assignments, and nearby calendar events alongside existing deadline summaries.
+- Use Monday-to-now in the configured timezone for updates; intentionally repeat weekly items in daily snapshots.
+- Report unavailable sources and undated items explicitly, reject malformed dates, and exclude drafts and future announcements.
+- Keep summaries private and compact, with institution links instead of signed storage URLs. No model calls, Canvas writes, read-state changes, or public report caches are introduced.
+- Preserve deadline-only CLI and agent lookup behavior unless updates are requested.
+
 ## 0.6.0 — 2026-10-28
 
 - Make English the default language for documentation, CLI help, diagnostics, MCP instructions, and reminder/agent messages. Agents answer in the owner's language; original Canvas content is preserved.

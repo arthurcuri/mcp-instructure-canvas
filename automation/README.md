@@ -1,18 +1,39 @@
 # Optional reminders and scheduling
 
-These tools read Canvas deadlines, save a private snapshot, and optionally send it to Telegram. They make **no model calls and no Canvas writes**. Installing or cloning the project does not enable any schedule. The [local agent](../docs/agents.md) is a separate opt-in component.
+These tools read Canvas deadlines and weekly course updates, save a private snapshot, and optionally send it to Telegram. They make **no model calls and no Canvas writes**. Installing or cloning the project does not enable any schedule. The [local agent](../docs/agents.md) is a separate opt-in component.
 
 ## Run a private snapshot
 
 After [setup](../docs/setup.md), from the checkout:
 
 ```sh
-uv run canvas-weekly-check --all-courses --output .local/weekly-report.json
+uv run canvas-weekly-check --all-courses --include-updates --output .local/weekly-report.json
 ```
 
 The default period is the next seven days. Use `--period this_week` for the local Monday-to-Monday window, or `--course-id 12345` instead of `--all-courses` for one course. Without either, the configured default course is used. `--include-completed` includes completed/excused work.
 
 The JSON snapshot is replaced atomically with mode `600`; `.local/` is ignored. Omitting `--output` prints the report to stdout, which may contain private course data. Scheduling wrappers save the report privately and print only counts.
+
+### Weekly updates
+
+`--include-updates` adds publications/changes from **Monday 00:00 up to the snapshot time**, in `CANVAS_TIMEZONE`. The daily and weekly Actions workflows and the local scheduling wrapper include this flag. Direct CLI calls and the agent's deadline lookup retain their existing deadline-only behavior unless you request updates.
+
+| Source | Included changes |
+|---|---|
+| Announcements | Published during the current week |
+| Discussions/forums | New topics or a topic's latest reply during the current week |
+| Pages | Created or updated during the current week |
+| Files | Created or updated during the current week, excluding hidden/locked files |
+| Assignments | Created or updated during the current week, including undated assignments |
+| Calendar events | Created or updated during the current week, with an event date between Monday and the next seven days |
+
+The deadline section still uses the selected deadline period, normally the next seven days. The update section uses the calendar week independently. Repeated daily runs intentionally repeat that week's items; this is a weekly snapshot, with no delivery-deduplication state or course-data cache.
+
+Summaries contain titles, local dates, course names, and institution links; they do not copy message bodies, forum replies, or signed storage URLs. Existing topics with new replies appear once per snapshot, rather than once per reply. The server does not mark announcements or discussions as read.
+
+This covers the listed API sources, not every possible Canvas change: module rearrangements, grade changes, and external-tool activity are not tracked. Drafts and future announcements are excluded. A missing update date is counted explicitly. Inaccessible/failed sources are listed in the snapshot and Telegram message, with `updates.complete=false`; they are never presented as having no news. Malformed dates fail the run before replacing its report.
+
+Contracts: [Announcements](https://developerdocs.instructure.com/services/canvas/resources/announcements), [Discussion Topics](https://developerdocs.instructure.com/services/canvas/resources/discussion_topics), [Pages](https://developerdocs.instructure.com/services/canvas/resources/pages), [Files](https://developerdocs.instructure.com/services/canvas/resources/files), and [Calendar Events](https://developerdocs.instructure.com/services/canvas/resources/calendar_events).
 
 ## Telegram
 
@@ -29,14 +50,14 @@ The JSON snapshot is replaced atomically with mode `600`; `.local/` is ignored. 
 6. When you explicitly want a real delivery test:
 
    ```sh
-   uv run canvas-weekly-check --all-courses --telegram --output .local/weekly-report.json
+   uv run canvas-weekly-check --all-courses --include-updates --telegram --output .local/weekly-report.json
    ```
 
 Chat discovery sends no messages and does not advance the polling offset. Use a dedicated bot without a webhook or competing update consumer. Do not run discovery while an agent receiver is active. If no chat appears, send a fresh `/start`.
 
 Without `--telegram`, local snapshot commands do not send messages even if credentials are configured. Reminders use plain text, disable link previews, and split long reports. Delivery is not retried automatically: a transport failure can happen after delivery, and multipart reports can be partially sent. Check the chat before repeating.
 
-A reminder includes selected assignment titles, dates, and links. Reply to a reminder or send its assignment URL to a separately configured agent when you want help; sending a reminder alone does not start agent work.
+A reminder includes selected assignment and update titles, dates, and links. Reply to a reminder or send its assignment URL to a separately configured agent when you want help; sending a reminder alone does not start agent work.
 
 ## GitHub Actions
 
