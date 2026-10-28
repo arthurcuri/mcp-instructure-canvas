@@ -54,7 +54,7 @@ uv run canvas-agent status
 
 `verify_mcp.py` uses the first active course, or an explicit `--course-id 12345`. No configured default course is required. With no active courses, it still checks the protocol and all-course deadline query, and reports skipped course-detail checks. It prints counts/status rather than course bodies.
 
-To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
+To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.6.0` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
 
 A manual reminder workflow run sends a real message when bot secrets are configured. That is optional integration work, not a contributor requirement.
 

@@ -2,7 +2,7 @@
 
 This project follows semantic versioning. Before 1.0, minor releases may change interfaces; migration guidance appears in release notes.
 
-## Unreleased
+## 0.6.0 — 2026-10-28
 
 - Make English the default language for documentation, CLI help, diagnostics, MCP instructions, and reminder/agent messages. Agents answer in the owner's language; original Canvas content is preserved.
 - Retain a Portuguese README and legacy Portuguese approval replies/attachment markers. Add English assignment references and `[[file: ...]]` attachments to the Telegram bridge.

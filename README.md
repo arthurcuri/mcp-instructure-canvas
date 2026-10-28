@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/assets/overview.svg" alt="Canvas MCP: local API access, Telegram reminders, and optional agents" width="100%" />
+  <img src="docs/assets/overview-en.svg" alt="Canvas MCP: local API access, Telegram reminders, and optional agents" width="100%" />
 </p>
 
 <p align="center">
   <a href="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml"><img src="https://github.com/arthurcuri/mcp-instructure-canvas/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e" alt="MIT license" /></a>
-  <a href="https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest"><img src="https://img.shields.io/github/v/release/arthurcuri/mcp-instructure-canvas" alt="Latest release" /></a>
+  <a href="https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest"><img src="https://img.shields.io/github/v/release/arthurcuri/mcp-instructure-canvas?label=release&amp;cacheSeconds=300" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab" alt="Python 3.11 or later" />
   <img src="https://img.shields.io/badge/MCP-stdio-8b5cf6" alt="Local MCP over stdio" />
 </p>
@@ -17,6 +17,8 @@
 An independent, MIT-licensed [Model Context Protocol](https://modelcontextprotocol.io/) server for personal Canvas installations. Configure your institution's HTTPS URL and your own access token; no hosted service is required. Works with MCP clients that support local stdio, including Claude Code, Codex, Claude Desktop, Gemini CLI, Cursor, and Kiro.
 
 [Português (Brasil)](README.pt-BR.md) · [Installation](docs/setup.md) · [API guide](docs/api.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+
+**Version 0.6.0** · [Release notes](docs/releases/0.6.0.md) · [Packages and Docker](docs/packages.md)
 
 ## What you can do
 
