@@ -91,7 +91,7 @@ def test_failed_weekly_query_preserves_previous_snapshot_and_reports_a_safe_erro
     assert main() == 1
     assert output.read_text() == '{"checked_at":"previous-run"}\n'
     captured = capsys.readouterr()
-    assert "permissão" in captured.err
+    assert "permission" in captured.err
     assert "private-test-secret" not in captured.err
     assert not captured.out
 

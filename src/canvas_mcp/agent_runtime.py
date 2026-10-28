@@ -46,7 +46,7 @@ class CodexManager:
             target.mkdir(parents=True, exist_ok=True, mode=0o700)
             if source.is_symlink():
                 if source.resolve() != target.resolve():
-                    raise CodexError("O estado aponta para outra instalação; confira .local.")
+                    raise CodexError("State points to another installation; check .local.")
             elif source.exists():
                 shutil.copytree(source, target, dirs_exist_ok=True)
                 source.rename(source.with_name(name + ".before-runtime-" + str(time.time_ns())))
@@ -56,7 +56,7 @@ class CodexManager:
                 source.symlink_to(target, target_is_directory=True)
         uv = shutil.which("uv")
         if not uv:
-            raise CodexError("Instale uv para preparar o serviço local.")
+            raise CodexError("Install uv to prepare the local service.")
         result = subprocess.run(
             [uv, "sync", "--locked", "--no-dev", "--project", str(self.runtime)],
             capture_output=True,
@@ -65,18 +65,18 @@ class CodexManager:
             check=False,
         )
         if result.returncode:
-            raise CodexError("Falha ao preparar dependências do serviço; confira uv.")
+            raise CodexError("Could not prepare service dependencies; check uv.")
 
     def bridge(self) -> CodexBridge:
         if not self.binary:
-            raise CodexError("Instale Codex CLI e execute codex login com ChatGPT.")
+            raise CodexError("Install Codex CLI and run codex login with ChatGPT.")
         if sys.platform == "darwin" and (self.runtime / ".venv/bin/python").is_file():
             return CodexBridge(self.runtime, self.runtime / ".env", self.binary)
         return CodexBridge(self.project, self.env_file, self.binary)
 
     def prepare(self) -> dict:
         if self.status()["running"]:
-            raise CodexError("Pare o receptor antes de atualizar sua instalação privada.")
+            raise CodexError("Stop the receiver before updating its private installation.")
         if sys.platform == "darwin":
             self.install_runtime()
         bridge = self.bridge()
@@ -130,14 +130,14 @@ class CodexManager:
         )
         if required and result.returncode:
             raise CodexError(
-                "launchd recusou a operação; confira canvas-agent status e o login do macOS."
+                "launchd rejected the operation; check canvas-agent status and the macOS login."
             )
         return result
 
     def start(self) -> dict:
         if sys.platform != "darwin":
             raise CodexError(
-                "Neste sistema use canvas-agent run --provider codex em um serviço local."
+                "On this system, use canvas-agent run --provider codex with a local supervisor."
             )
         if self.status().get("running"):
             return {"started": False, "already_running": True, "provider": "codex"}
@@ -207,10 +207,10 @@ class CodexManager:
 
     def stop(self) -> dict:
         if sys.platform != "darwin":
-            raise CodexError("Encerre o processo em primeiro plano ou seu serviço local.")
+            raise CodexError("Stop the foreground process or your local service.")
         result = self.launchctl(["bootout", self.target], required=False)
         if result.returncode and self.status()["running"]:
-            raise CodexError("Não foi possível parar o receptor; confira seu serviço no launchd.")
+            raise CodexError("Could not stop the receiver; check its launchd service.")
         self.plist.unlink(missing_ok=True)
         auto_label = self.label.replace(".codex-", ".auto-")
         self.launchctl(["bootout", f"gui/{os.getuid()}/{auto_label}"], required=False)
@@ -220,7 +220,7 @@ class CodexManager:
     def run(self) -> dict:
         try:
             if not self.binary:
-                raise CodexError("Instale Codex CLI e execute codex login com ChatGPT.")
+                raise CodexError("Install Codex CLI and run codex login with ChatGPT.")
             asyncio.run(CodexBridge(self.project, self.env_file, self.binary).run())
         except (KeyboardInterrupt, asyncio.CancelledError):
             pass

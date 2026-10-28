@@ -1,7 +1,8 @@
 # Canvas assistant in Telegram
 
 Assist the account owner with their Canvas coursework when they ask in Telegram.
-Use the Canvas MCP and the canvas-activity skill in this repository. Answer in Portuguese.
+Use the Canvas MCP and the canvas-activity skill in this repository. Answer in the
+owner's language; use English when no language preference is available.
 In Claude Channels, use the Telegram reply tool so the user receives the response.
 In the Codex bridge, your final response is delivered automatically. Keep replies concise.
 

@@ -16,9 +16,9 @@ def check_names(names: list[str]) -> None:
     for name in names:
         parts = Path(name).parts
         if any(part in {".local", ".venv", "auth.json", "settings.local.json"} for part in parts):
-            raise ValueError("O pacote contém um caminho privado.")
+            raise ValueError("The package contains a private path.")
         if any(part.startswith(".env") and part != ".env.example" for part in parts):
-            raise ValueError("O pacote contém configuração privada.")
+            raise ValueError("The package contains private configuration.")
 
 
 def verify(directory: Path, version: str) -> dict:
@@ -30,13 +30,13 @@ def verify(directory: Path, version: str) -> dict:
         metadata_path = next(name for name in names if name.endswith(".dist-info/METADATA"))
         metadata = BytesParser().parsebytes(archive.read(metadata_path))
         if metadata["Version"] != version or metadata["Name"] != "mcp-instructure-canvas":
-            raise ValueError("Versão/nome divergentes no wheel.")
+            raise ValueError("Wheel version/name mismatch.")
         init = archive.read("canvas_mcp/__init__.py").decode()
         if f'__version__ = "{version}"' not in init:
-            raise ValueError("Versão divergente no runtime.")
+            raise ValueError("Runtime version mismatch.")
         catalog = json.loads(archive.read("canvas_mcp/data/operations.json"))
         if catalog["operation_count"] != len(catalog["operations"]):
-            raise ValueError("Catálogo incompleto no wheel.")
+            raise ValueError("Incomplete catalog in the wheel.")
         wheel_count = len(names)
     with tarfile.open(source) as archive:
         names = archive.getnames()
@@ -44,7 +44,7 @@ def verify(directory: Path, version: str) -> dict:
         metadata_path = next(name for name in names if name.endswith("/PKG-INFO"))
         metadata = BytesParser().parsebytes(archive.extractfile(metadata_path).read())
         if metadata["Version"] != version:
-            raise ValueError("Versão divergente no pacote fonte.")
+            raise ValueError("Source distribution version mismatch.")
         source_count = len(names)
     sums = directory / "SHA256SUMS"
     sums.write_text(
@@ -70,7 +70,7 @@ def main() -> None:
     args = parser.parse_args()
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     if args.tag and args.tag != "v" + version:
-        raise ValueError("A tag não corresponde à versão do projeto.")
+        raise ValueError("The tag does not match the project version.")
     if args.version_only:
         print(version)
     else:

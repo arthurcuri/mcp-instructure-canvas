@@ -67,7 +67,7 @@ async def test_stdio_handshake_and_tool_errors_work_without_network(tmp_path):
             assert len(tools.tools) == 18
             result = await session.call_tool("get_assignment", {"assignment_id": -1})
             assert result.isError
-            assert "inteiro positivo" in result.content[0].text
+            assert "positive integer" in result.content[0].text
             assert "test-secret" not in json.dumps(result.model_dump())
 
 
@@ -86,7 +86,7 @@ async def test_read_only_mode_omits_all_write_tools(settings):
             await server.call_tool(
                 "canvas_api_read", {"operation_id": "submissions.submit_assignment_courses"}
             )
-        with pytest.raises(ToolError, match="correspondente"):
+        with pytest.raises(ToolError, match="matches"):
             await server.call_tool(
                 "canvas_graphql_read", {"query": "mutation { deleteCourse(id: 1) { id } }"}
             )
@@ -110,7 +110,7 @@ async def test_assignment_submission_posts_content_and_never_placeholder(setting
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
         server = create_server(settings, client)
-        with pytest.raises(ToolError, match="conteúdo"):
+        with pytest.raises(ToolError, match="content"):
             await server.call_tool(
                 "submit_assignment",
                 {"assignment_id": 7, "submission": {"submission_type": "online_text_entry"}},

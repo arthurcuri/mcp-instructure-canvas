@@ -27,7 +27,7 @@ class _TextParser(HTMLParser):
             href = attributes.get("href") or ""
             self.links.append(href if href.startswith(("https://", "http://", "/")) else "")
         if tag == "img" and attributes.get("alt"):
-            self.parts.append(f"[Imagem: {attributes['alt']}]")
+            self.parts.append(f"[Image: {attributes['alt']}]")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style"}:

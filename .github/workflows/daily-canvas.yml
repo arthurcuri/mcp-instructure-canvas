@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
     env:
       UV_PYTHON: "3.12"
-      CANVAS_API_URL: ${{ vars.CANVAS_API_URL || 'https://pucminas.instructure.com/api/v1' }}
+      CANVAS_API_URL: ${{ vars.CANVAS_API_URL }}
       CANVAS_API_TOKEN: ${{ secrets.CANVAS_API_TOKEN }}
       CANVAS_TIMEZONE: ${{ vars.CANVAS_TIMEZONE || 'America/Sao_Paulo' }}
       CANVAS_READ_ONLY: "true"

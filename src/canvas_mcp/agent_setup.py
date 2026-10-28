@@ -26,7 +26,7 @@ def selected_provider(env_file: Path) -> str | None:
     )
     provider = provider.strip().lower()
     if provider and provider not in LABELS:
-        raise ValueError("CANVAS_AGENT_PROVIDER deve ser codex ou claude. Use canvas-agent setup.")
+        raise ValueError("CANVAS_AGENT_PROVIDER must be codex or claude. Use canvas-agent setup.")
     return provider or None
 
 
@@ -34,14 +34,14 @@ def resolve_provider(explicit: str | None, env_file: Path) -> str:
     provider = explicit or selected_provider(env_file)
     if not provider:
         raise ValueError(
-            "Escolha seu agente com canvas-agent setup, ou informe --provider codex/claude. "
-            "Nenhum provedor foi escolhido automaticamente."
+            "Choose an agent with canvas-agent setup, or pass --provider codex/claude. "
+            "No provider has been selected automatically."
         )
     return provider
 
 
 def terminal_text(value: object) -> str:
-    return re.sub(r"[\x00-\x1f\x7f-\x9f]", "", str(value or "não informado"))[:160]
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", "", str(value or "not provided"))[:160]
 
 
 def login_environment() -> dict:
@@ -80,7 +80,7 @@ def identity(provider: str, project: Path) -> dict | None:
     """Read native login metadata only; never load a credential cache or start a turn."""
     binary = shutil.which(provider)
     if not binary:
-        raise ValueError(f"Instale {LABELS[provider]} antes de continuar.")
+        raise ValueError(f"Install {LABELS[provider]} before continuing.")
     if provider == "codex":
         try:
             return asyncio.run(codex_identity(binary, project))
@@ -100,9 +100,9 @@ def identity(provider: str, project: Path) -> dict | None:
         )
         account = json.loads(result.stdout)
     except (ValueError, OSError, subprocess.TimeoutExpired):
-        raise ValueError("Não foi possível consultar o login do Claude Code.") from None
+        raise ValueError("Could not check Claude Code login status.") from None
     if not isinstance(account, dict):
-        raise ValueError("O Claude Code retornou um status de login inválido.")
+        raise ValueError("Claude Code returned an invalid login status.")
     if not account.get("loggedIn") or account.get("authMethod") != "claude.ai":
         return None
     return {"email": account.get("email"), "plan": account.get("subscriptionType")}
@@ -111,25 +111,23 @@ def identity(provider: str, project: Path) -> dict | None:
 def login(provider: str, project: Path) -> dict:
     binary = shutil.which(provider)
     if not binary:
-        raise ValueError(f"Instale {LABELS[provider]} antes de fazer login.")
-    print(f"Abrindo o login oficial de {LABELS[provider]}. Escolha sua conta no navegador.")
-    print("Esse login é compartilhado com os outros usos desse CLI nesta máquina.")
+        raise ValueError(f"Install {LABELS[provider]} before signing in.")
+    print(f"Opening the official {LABELS[provider]} login. Choose your account in the browser.")
+    print("This login is shared with other uses of this CLI on this computer.")
     arguments = (
         [binary, "login"] if provider == "codex" else [binary, "auth", "login", "--claudeai"]
     )
     result = subprocess.run(arguments, cwd=project, env=login_environment(), check=False)
     if result.returncode:
-        raise ValueError("O login não foi concluído; o receptor não foi iniciado.")
+        raise ValueError("Login was not completed; the receiver was not started.")
     account = identity(provider, project)
     if not account:
-        raise ValueError(
-            "Não foi confirmado um login pela assinatura; o receptor não foi iniciado."
-        )
+        raise ValueError("Subscription login was not confirmed; the receiver was not started.")
     print(
-        f"Conta: {terminal_text(account.get('email'))} · "
-        f"plano: {terminal_text(account.get('plan'))}"
+        f"Account: {terminal_text(account.get('email'))} · "
+        f"plan: {terminal_text(account.get('plan'))}"
     )
-    print("Login concluído. Para configurar o bot, execute canvas-agent setup.")
+    print("Login completed. To configure the bot, run canvas-agent setup.")
     return {"provider": provider, "authenticated": True, "started": False}
 
 
@@ -161,26 +159,26 @@ def overview(project: Path, env_file: Path) -> dict:
 def describe_overview(state: dict) -> None:
     selected = state["selected_provider"]
     print(
-        "Agente escolhido: "
-        + (LABELS[selected] if selected else "não configurado; use canvas-agent setup")
+        "Selected agent: "
+        + (LABELS[selected] if selected else "not configured; use canvas-agent setup")
     )
     for provider, item in state["providers"].items():
         running = item.get("running")
-        status = "rodando" if running else "parado" if running is False else "não verificado"
+        status = "running" if running else "stopped" if running is False else "not checked"
         print(f"{LABELS[provider]}: {status}")
         if item.get("channel_registration") == "blocked_by_organization":
-            print("  Channels bloqueado: o administrador do Team precisa habilitá-lo.")
+            print("  Channels is blocked: your Team administrator must enable it.")
         if item.get("telegram"):
             print("  Telegram: " + terminal_text(item["telegram"]))
     print(
-        "Modo escolhido: "
+        "Selected mode: "
         + (
-            "automático — resolve e envia às 08h locais"
+            "automatic — prepares and submits at 08:00 local time"
             if state["automatic"]
-            else "manual — aguarda seu pedido"
+            else "manual — waits for your request"
         )
     )
-    print("O modo acima vem do .env. Após alterá-lo, pare e inicie para atualizar o serviço.")
+    print("The mode above comes from .env. After changing it, stop/start to update the service.")
 
 
 def choose(prompt: str, options: dict[str, str], *, default: str | None = None) -> str:
@@ -191,7 +189,7 @@ def choose(prompt: str, options: dict[str, str], *, default: str | None = None) 
         answer = input("> ").strip().lower() or default
         if answer in options:
             return answer
-        print("Escolha uma das opções exibidas.")
+        print("Choose one of the displayed options.")
 
 
 def interactive_terminal() -> bool:
@@ -199,9 +197,9 @@ def interactive_terminal() -> bool:
 
 
 def cancel_setup(*, login_completed: bool = False) -> dict:
-    print("Cancelado. As escolhas do bot não foram salvas e nenhum serviço foi alterado.")
+    print("Cancelled. Bot choices were not saved and services were not changed.")
     if login_completed:
-        print("O login que você concluiu continua disponível no CLI.")
+        print("Your completed login remains available in the CLI.")
     return {"cancelled": True}
 
 
@@ -209,61 +207,67 @@ def setup(project: Path, env_file: Path, provider: str | None = None) -> dict:
     from canvas_mcp.agent import control, display
 
     if not interactive_terminal():
-        raise ValueError("Abra um Terminal interativo e execute uv run canvas-agent setup.")
-    print("\nCanvas · configurar o agente do Telegram\n")
-    print("Você escolhe o provedor, a conta e o modo, e revisa antes de salvar/iniciar.")
-    print("O token Canvas e o bot Telegram são lidos do .env; não serão exibidos.")
+        raise ValueError("Open an interactive terminal and run uv run canvas-agent setup.")
+    print("\nCanvas · configure the Telegram agent\n")
+    print("Choose the provider, account, and mode, then review before saving/starting.")
+    print(
+        "The Canvas token and Telegram bot settings are read from .env and will not be displayed."
+    )
     canvas = Settings.load(env_file)
     telegram = TelegramSettings.load(env_file)
     if not telegram.chat_id.isdecimal() or int(telegram.chat_id) < 1:
-        raise ValueError("Configure TELEGRAM_CHAT_ID da sua conversa privada antes do setup.")
+        raise ValueError("Set TELEGRAM_CHAT_ID to your private chat before setup.")
     if not provider:
         choice = choose(
-            "1/4 · Qual agente você quer usar?",
+            "1/4 · Which agent would you like to use?",
             {
                 "1": LABELS["codex"],
                 "2": LABELS["claude"],
-                "0": "Cancelar",
+                "0": "Cancel",
             },
         )
         if choice == "0":
             return cancel_setup()
         provider = {"1": "codex", "2": "claude"}[choice]
     else:
-        print("1/4 · Agente informado: " + LABELS[provider])
+        print("1/4 · Specified agent: " + LABELS[provider])
     for name in ("CANVAS_AGENT_PROVIDER", "CANVAS_AGENT_AUTO"):
         if name in os.environ:
-            raise ValueError(f"Remova {name} do ambiente do shell para o setup usar seu .env.")
-    print("\n2/4 · Conta da assinatura")
-    print("Consultando apenas o status do login existente, sem iniciar tarefas de IA.")
+            raise ValueError(
+                f"Remove {name} from the shell environment so setup can use your .env."
+            )
+    print("\n2/4 · Subscription account")
+    print("Checking existing login status only, without starting AI tasks.")
     account = identity(provider, project)
     if account:
         print(
-            f"Conta: {terminal_text(account.get('email'))} · "
-            f"plano: {terminal_text(account.get('plan'))}"
+            f"Account: {terminal_text(account.get('email'))} · "
+            f"plan: {terminal_text(account.get('plan'))}"
         )
         choice = choose(
-            "Como deseja conectar?",
+            "How would you like to connect?",
             {
-                "1": "Usar explicitamente esta conta",
-                "2": "Abrir o login oficial e escolher a conta",
-                "0": "Cancelar",
+                "1": "Explicitly use this account",
+                "2": "Open official login and choose an account",
+                "0": "Cancel",
             },
         )
     else:
-        print("Não há um login pela assinatura disponível neste CLI.")
-        choice = choose("Como deseja conectar?", {"2": "Abrir o login oficial", "0": "Cancelar"})
+        print("No subscription login is available in this CLI.")
+        choice = choose(
+            "How would you like to connect?", {"2": "Open official login", "0": "Cancel"}
+        )
     if choice == "0":
         return cancel_setup()
     if choice == "2":
         login(provider, project)
         account = identity(provider, project)
     mode = choose(
-        "\n3/4 · Como o agente deve trabalhar? (Enter = manual)",
+        "\n3/4 · How should the agent work? (Enter = manual)",
         {
-            "1": "Manual: aguardar meu pedido; enviar somente quando eu pedir",
-            "2": "Automático: resolver e enviar atividades compatíveis às 08h no Mac",
-            "0": "Cancelar",
+            "1": "Manual: wait for my request; submit only when I ask",
+            "2": "Automatic: prepare and submit supported assignments at 08:00 on the Mac",
+            "0": "Cancel",
         },
         default="1",
     )
@@ -271,58 +275,68 @@ def setup(project: Path, env_file: Path, provider: str | None = None) -> dict:
         return cancel_setup(login_completed=choice == "2")
     automatic = mode == "2"
     if automatic and canvas.read_only:
-        raise ValueError("O modo automático exige CANVAS_READ_ONLY=false no .env. Nada foi salvo.")
+        raise ValueError(
+            "Automatic mode requires CANVAS_READ_ONLY=false in .env. Nothing was saved."
+        )
     if automatic and sys.platform != "darwin":
-        print("Neste sistema, o setup não instala agendamento: configure o cron de auto-run.")
+        print("On this system, setup does not install a schedule: configure auto-run with cron.")
     state = overview(project, env_file)
     active = [name for name, item in state["providers"].items() if item.get("running")]
-    print("\n4/4 · Revise a configuração")
-    print("Agente: " + LABELS[provider])
-    print("Conta: " + terminal_text((account or {}).get("email")))
+    print("\n4/4 · Review configuration")
+    print("Agent: " + LABELS[provider])
+    print("Account: " + terminal_text((account or {}).get("email")))
     print("Canvas: " + canvas.api_url)
-    print("Telegram: sua conversa privada, ID terminado em " + telegram.chat_id[-4:])
+    print("Telegram: your private chat, ID ending in " + telegram.chat_id[-4:])
     print(
-        "Modo: "
+        "Mode: "
         + (
-            "automático: prepara E envia; job local das 08h"
+            "automatic: prepares AND submits; local 08:00 job"
             if automatic
-            else "manual: aguarda seu pedido"
+            else "manual: waits for your request"
         )
     )
     if active:
-        print("Rodando agora: " + ", ".join(LABELS[name] for name in active))
-        print("Se escolher iniciar, esses receptores serão parados antes de iniciar o escolhido.")
+        print("Currently running: " + ", ".join(LABELS[name] for name in active))
+        print(
+            "If you choose to start, these receivers will be stopped "
+            "before the selected one starts."
+        )
     if provider == "claude":
-        print("Claude Telegram exige Bun, plugin oficial e Channels habilitado pelo administrador.")
-    print("Salvar altera somente as chaves de provedor/modo no .env; preserva tokens e notas.")
-    print("O login fica no CLI. A conversa do bot é própria e não importa seus chats existentes.")
-    print("O resumo do GitHub Actions continua independente desta configuração.")
-    options = {"2": "Salvar sem iniciar ou alterar serviços", "0": "Cancelar sem salvar"}
+        print(
+            "Claude Telegram requires Bun, the official plugin, and administrator-enabled Channels."
+        )
+    print("Saving changes only provider/mode keys in .env; it preserves tokens and notes.")
+    print(
+        "Login stays in the CLI. The bot has its own conversation "
+        "and does not import existing chats."
+    )
+    print("The GitHub Actions summary remains independent of this configuration.")
+    options = {"2": "Save without starting or changing services", "0": "Cancel without saving"}
     if provider == "claude" or sys.platform == "darwin":
-        options = {"1": "Salvar e iniciar agora", **options}
-    action = choose("O que deseja fazer? (Enter = cancelar)", options, default="0")
+        options = {"1": "Save and start now", **options}
+    action = choose("What would you like to do? (Enter = cancel)", options, default="0")
     if action == "0":
         return cancel_setup(login_completed=choice == "2")
     if action == "1" and any(item.get("running") is None for item in state["providers"].values()):
         raise ValueError(
-            "Não foi possível verificar todos os receptores. Confira canvas-agent status "
-            "antes de iniciar. As escolhas não foram salvas."
+            "Could not check all receivers. Check canvas-agent status "
+            "before starting. Choices have not been saved."
         )
     set_key(str(env_file), "CANVAS_AGENT_PROVIDER", provider, quote_mode="never")
     set_key(str(env_file), "CANVAS_AGENT_AUTO", str(automatic).lower(), quote_mode="never")
     env_file.chmod(0o600)
-    print("Escolha salva no .env. Login e tokens não foram copiados para a configuração pública.")
+    print("Choice saved in .env. Login and tokens were not copied into public configuration.")
     if action == "2":
         if active:
-            print("Os serviços existentes seguem com a configuração anterior.")
-            print("Para aplicar a troca depois: uv run canvas-agent setup → salvar e iniciar.")
+            print("Existing services continue using their previous configuration.")
+            print("To apply the change later: uv run canvas-agent setup → save and start.")
         else:
-            print("Para ativar depois: uv run canvas-agent start")
+            print("To activate later: uv run canvas-agent start")
         return {"saved": True, "provider": provider, "automatic": automatic, "started": False}
     for name in active:
-        print("Parando " + LABELS[name] + "…")
+        print("Stopping " + LABELS[name] + "…")
         control("stop", name, project, env_file)
-    print("Iniciando " + LABELS[provider] + "…")
+    print("Starting " + LABELS[provider] + "…")
     result = control("start", provider, project, env_file)
     display("start", provider, result)
     return {"saved": True, "provider": provider, "automatic": automatic, **result}

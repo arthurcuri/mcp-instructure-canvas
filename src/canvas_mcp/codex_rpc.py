@@ -20,17 +20,15 @@ class CodexError(ValueError):
         message = str(error.get("message", "")).lower()
         # Classify known failures locally; neither the original message nor data is exposed.
         if "no rollout found" in message or "thread not found" in message:
-            return cls(
-                "A conversa não tem histórico disponível no Codex.", category="thread_missing"
-            )
+            return cls("Conversation history is unavailable in Codex.", category="thread_missing")
         if any(word in message for word in ("unauthorized", "not logged in", "authentication")):
-            return cls("Renove o login do Codex com ChatGPT.", category="authentication")
+            return cls("Renew your Codex login with ChatGPT.", category="authentication")
         if "required" in message and "mcp" in message:
             return cls(
-                "O MCP obrigatório não iniciou; confira a instalação e o Canvas.",
+                "The required MCP server did not start; check installation and Canvas.",
                 category="mcp_unavailable",
             )
-        return cls("Codex recusou a operação solicitada.")
+        return cls("Codex rejected the requested operation.")
 
 
 class CodexRPC:
@@ -81,19 +79,19 @@ class CodexRPC:
         account = (await self.request("account/read", {"refreshToken": False})).get("account")
         if not isinstance(account, dict) or account.get("type") != "chatgpt":
             raise CodexError(
-                "Execute codex login com ChatGPT; o agente não usa chave de API.",
+                "Run codex login with ChatGPT; the agent does not use an API key.",
                 category="authentication",
             )
         return {"authentication": "chatgpt", "plan": account.get("planType")}
 
     async def send(self, message: dict) -> None:
         if not self.process or self.process.returncode is not None:
-            raise CodexError("Codex App Server não está disponível.")
+            raise CodexError("Codex App Server is unavailable.")
         try:
             self.process.stdin.write((json.dumps(message) + "\n").encode())
             await self.process.stdin.drain()
         except (BrokenPipeError, ConnectionError):
-            raise CodexError("A conexão local com Codex foi interrompida.") from None
+            raise CodexError("The local Codex connection was interrupted.") from None
 
     async def request(self, method: str, params: dict) -> dict:
         self.sequence += 1
@@ -104,7 +102,7 @@ class CodexRPC:
             await self.send({"id": identifier, "method": method, "params": params})
             return await asyncio.wait_for(future, 90)
         except TimeoutError:
-            raise CodexError("Codex não respondeu a tempo; confira login e conexão.") from None
+            raise CodexError("Codex timed out; check login and connection.") from None
         finally:
             self.pending.pop(identifier, None)
 
@@ -127,7 +125,7 @@ class CodexRPC:
         finally:
             for future in self.pending.values():
                 if not future.done():
-                    future.set_exception(CodexError("Codex App Server encerrou a conexão."))
+                    future.set_exception(CodexError("Codex App Server closed the connection."))
             await self.events.put({"method": "bridge/disconnected"})
 
     async def close(self) -> None:

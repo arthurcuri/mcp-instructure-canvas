@@ -278,7 +278,7 @@ async def test_empty_mcp_confirmation_accepts_human_reply_without_json(bridge, r
     await bridge.handle_event(permission_event())
     code = next(iter(bridge.pending))
     prompt = bridge.telegram._call.call_args.args[1]["text"]
-    assert "Sim ou Não" in prompt and "JSON" not in prompt
+    assert "Yes or No" in prompt and "JSON" not in prompt
     await bridge.handle_message(message(reply.format(code=code)))
     bridge.rpc.respond.assert_awaited_once_with(99, {"action": "accept", "content": {}})
     bridge.rpc.request.assert_not_called()
@@ -405,8 +405,17 @@ async def test_explicit_current_assignment_overrides_old_context_and_old_quoted_
 
 
 @pytest.mark.parametrize("count", [0, 1, 2])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Faça essa atividade por completo e envie",
+        "Prepare this assignment and submit it",
+        "Help with that task",
+        "Read the assignment from the reminder",
+    ],
+)
 async def test_unquoted_reminder_reference_reads_all_courses_and_never_selects_old_default(
-    bridge, monkeypatch, count
+    bridge, monkeypatch, count, text
 ):
     from canvas_mcp.codex_agent import collect_report
 
@@ -426,7 +435,6 @@ async def test_unquoted_reminder_reference_reads_all_courses_and_never_selects_o
     )
     monkeypatch.setattr("canvas_mcp.codex_agent.collect_report", collect)
     bridge.save(assignment_context={"course_id": 1, "assignment_id": 2})
-    text = "Faça essa atividade por completo e envie"
     result = await bridge.contextual_input(message(text), text)
     collect.assert_awaited_once_with(bridge.canvas, all_courses=True)
     assert "current_deadlines" in result
@@ -501,7 +509,8 @@ async def test_completed_turn_sends_final_text_but_not_reasoning_or_commentary(b
     assert bridge.turn_id is None and bridge.state["in_progress"] is False
 
 
-async def test_only_coursework_files_can_be_attached_and_credentials_are_redacted(bridge):
+@pytest.mark.parametrize("marker", ["file", "arquivo"])
+async def test_only_coursework_files_can_be_attached_and_credentials_are_redacted(bridge, marker):
     root = bridge.project / ".local/activities"
     root.mkdir(parents=True)
     (root / "solution.md").write_text("Requested solution")
@@ -512,8 +521,8 @@ async def test_only_coursework_files_can_be_attached_and_credentials_are_redacte
         + bridge.canvas.api_token
         + " "
         + bridge.settings.token
-        + " [[arquivo: solution.md]] [[arquivo: leak.md]]"
-        + " [[arquivo: ../../.env]] [[arquivo: symlink]]"
+        + f" [[{marker}: solution.md]] [[{marker}: leak.md]]"
+        + f" [[{marker}: ../../.env]] [[{marker}: symlink]]"
     )
     bridge.telegram.send_document.assert_awaited_once_with(
         root / "solution.md", b"Requested solution"

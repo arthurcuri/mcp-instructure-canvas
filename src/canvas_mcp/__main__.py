@@ -32,18 +32,18 @@ async def check_connection(settings: Settings) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Servidor MCP local da API Canvas, com leitura e escrita configurável."
+        description="Local Canvas API MCP server with configurable reads and writes."
     )
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
-        "--env-file", type=Path, help="Caminho explícito do .env; padrão: .env no cwd."
+        "--env-file", type=Path, help="Explicit .env path; default: .env in the working directory."
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
-        "--test", action="store_true", help="Testar acesso ao Canvas sem modificar dados."
+        "--test", action="store_true", help="Test Canvas access without modifying data."
     )
     mode.add_argument(
-        "--config", action="store_true", help="Mostrar configuração sem a credencial."
+        "--config", action="store_true", help="Show configuration without credentials."
     )
     args = parser.parse_args()
     try:

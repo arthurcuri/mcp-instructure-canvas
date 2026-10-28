@@ -81,7 +81,7 @@ class AutoRunner:
     async def codex(self, task: dict) -> None:
         binary = shutil.which("codex")
         if not binary:
-            raise ValueError("Instale Codex CLI e faça login com ChatGPT.")
+            raise ValueError("Install Codex CLI and sign in with ChatGPT.")
         bridge = CodexBridge(self.project, self.env_file, binary)
         bridge.automated_task = True
         bridge.state_path = self.directory / "threads" / f"{task['course_id']}-{task['id']}.json"
@@ -101,7 +101,7 @@ class AutoRunner:
                 while bridge.turn_id:
                     await bridge.handle_event(await bridge.rpc.events.get())
             if bridge.state.get("last_turn_status") != "completed":
-                raise ValueError("O agente não concluiu a tarefa automática.")
+                raise ValueError("The agent did not complete the automatic task.")
         finally:
             if bridge.turn_id:
                 try:
@@ -193,10 +193,12 @@ class AutoRunner:
         try:
             result = json.loads(output)
         except (ValueError, UnicodeError):
-            raise ValueError("Claude não confirmou um resultado válido.") from None
+            raise ValueError("Claude did not confirm a valid result.") from None
         if process.returncode or result.get("is_error"):
-            raise ValueError("Claude não concluiu a tarefa; confira login, limites e permissões.")
-        text = str(result.get("result") or "Claude encerrou a tarefa.")
+            raise ValueError(
+                "Claude did not complete the task; check login, limits, and permissions."
+            )
+        text = str(result.get("result") or "Claude completed the task.")
         for secret in (telegram.settings.token, Settings.load(self.env_file).api_token):
             text = text.replace(secret, "[credencial removida]")
         await telegram._call(
@@ -211,7 +213,7 @@ class AutoRunner:
             raise ValueError("CANVAS_AGENT_AUTO=true exige CANVAS_READ_ONLY=false.")
         telegram = TelegramClient(TelegramSettings.load(self.env_file))
         if not telegram.settings.chat_id.isdecimal() or int(telegram.settings.chat_id) < 1:
-            raise ValueError("O trabalhador automático exige seu chat privado positivo.")
+            raise ValueError("The automatic worker requires your positive private chat ID.")
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         lock = (self.directory / "runner.lock").open("a")
         os.chmod(lock.name, 0o600)
@@ -265,9 +267,10 @@ class AutoRunner:
                 "sendMessage",
                 {
                     "chat_id": telegram.settings.chat_id,
-                    "text": f"Automático ({self.provider}): {processed} processada(s), "
-                    f"{submitted} entrega(s) confirmada(s), {skipped} indisponível(is). "
-                    "Resultados sem entrega confirmada exigem atenção e não serão repetidos.",
+                    "text": f"Automatic ({self.provider}): {processed} processed, "
+                    f"{submitted} confirmed submission(s), {skipped} unavailable. "
+                    "Results without a confirmed submission need attention "
+                    "and will not be retried.",
                 },
             )
             return {

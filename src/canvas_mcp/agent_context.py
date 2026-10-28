@@ -36,7 +36,9 @@ def refers_to_reminder(text: str) -> bool:
     return bool(
         re.search(
             r"\b(?:ess[ae]|est[ae]|aquel[ae])\s+(?:atividade|tarefa|trabalho)\b"
-            r"|\b(?:atividade|tarefa|trabalho)\s+(?:acima|do lembrete)\b",
+            r"|\b(?:atividade|tarefa|trabalho)\s+(?:acima|do lembrete)\b"
+            r"|\b(?:this|that)\s+(?:assignment|task|coursework)\b"
+            r"|\b(?:assignment|task|coursework)\s+(?:above|(?:in|from) (?:the )?reminder)\b",
             text,
             re.IGNORECASE,
         )

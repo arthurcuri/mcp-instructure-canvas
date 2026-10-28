@@ -48,7 +48,7 @@ class AgentManager:
 
     def call(self, arguments: list[str], *, environment: dict | None = None) -> str:
         if not self.binary:
-            raise AgentError("Instale o Claude Code antes de iniciar o agente.")
+            raise AgentError("Install Claude Code before starting the agent.")
         try:
             result = subprocess.run(
                 [self.binary, *arguments],
@@ -60,16 +60,16 @@ class AgentManager:
                 check=False,
             )
         except (OSError, subprocess.TimeoutExpired):
-            raise AgentError("Não foi possível executar o controle do Claude Code.") from None
+            raise AgentError("Could not run Claude Code lifecycle commands.") from None
         if result.returncode:
             message = (result.stdout + result.stderr).lower()
             if "workspace not trusted" in message:
                 raise AgentError(
-                    "Claude Code exige confiança no projeto: abra claude neste diretório "
-                    "e aceite o diálogo de confiança antes de iniciar o agente."
+                    "Claude Code requires project trust: open claude in this directory "
+                    "and accept the trust prompt before starting the agent."
                 )
             raise AgentError(
-                "Claude Code recusou o comando. Verifique login, versão e política de Channels."
+                "Claude Code rejected the command. Check login, version, and Channels policy."
             )
         return result.stdout
 
@@ -77,15 +77,15 @@ class AgentManager:
         try:
             auth = json.loads(self.call(["auth", "status"]))
         except (ValueError, TypeError):
-            raise AgentError("Claude Code não retornou um status de autenticação válido.") from None
+            raise AgentError("Claude Code returned an invalid authentication status.") from None
         if (
             not isinstance(auth, dict)
             or not auth.get("loggedIn")
             or auth.get("authMethod") != "claude.ai"
         ):
             raise AgentError(
-                "Entre no Claude Code com sua assinatura pelo /login; "
-                "este agente não usa chave de API."
+                "Sign in to Claude Code with your subscription using /login; "
+                "this agent does not use an API key."
             )
         return {key: auth.get(key) for key in ("loggedIn", "authMethod", "subscriptionType")}
 
@@ -93,11 +93,11 @@ class AgentManager:
         Settings.load(self.env_file)
         telegram = TelegramSettings.load(self.env_file)
         if not telegram.chat_id.isdecimal() or int(telegram.chat_id) < 1:
-            raise AgentError("Configure o ID positivo da sua conversa privada em TELEGRAM_CHAT_ID.")
+            raise AgentError("Set TELEGRAM_CHAT_ID to your positive private chat ID.")
         server = self.project / ".venv/bin/canvas-mcp-server"
         instructions = self.project / "automation/agent_instructions.md"
         if not server.is_file() or not instructions.is_file():
-            raise AgentError("Abra o repositório instalado e execute uv sync --locked.")
+            raise AgentError("Open the installed repository and run uv sync --locked.")
         access = {
             "dmPolicy": "allowlist",
             "allowFrom": [telegram.chat_id],
@@ -195,9 +195,9 @@ class AgentManager:
                 self.call(["agents", "--json", "--all", "--cwd", str(self.project)])
             )
         except (ValueError, TypeError):
-            raise AgentError("Claude Code não retornou uma lista válida de sessões.") from None
+            raise AgentError("Claude Code returned an invalid session list.") from None
         if not isinstance(sessions, list) or any(not isinstance(item, dict) for item in sessions):
-            raise AgentError("Formato inesperado na lista de sessões do Claude Code.")
+            raise AgentError("Unexpected Claude Code session list format.")
         return sessions
 
     def state(self) -> dict:
@@ -207,10 +207,10 @@ class AgentManager:
             state = json.loads(self.state_file.read_text())
         except (OSError, ValueError):
             raise AgentError(
-                "Estado local do agente inválido; confira .local/agent/session.json."
+                "Invalid local agent state; check .local/agent/session.json."
             ) from None
         if not isinstance(state, dict):
-            raise AgentError("Estado local do agente inválido.")
+            raise AgentError("Invalid local agent state.")
         return state
 
     def current(self) -> dict | None:
@@ -231,7 +231,7 @@ class AgentManager:
     def start(self) -> dict:
         auth = self.authentication()
         if not shutil.which("bun"):
-            raise AgentError("Instale Bun para usar o plugin oficial do Telegram.")
+            raise AgentError("Install Bun to use the official Telegram plugin.")
         existing = self.current()
         if (
             existing
@@ -267,8 +267,8 @@ class AgentManager:
         launched = re.search(r"backgrounded\s*·\s*([A-Za-z0-9-]+)", output)
         if launched is None:
             raise AgentError(
-                "Claude iniciou sem retornar um ID reconhecível. "
-                "Confira claude agents antes de repetir."
+                "Claude started without returning a recognizable ID. "
+                "Check claude agents before repeating."
             )
         identifier = launched.group(1)
         save_report(self.state_file, {"session_id": identifier})
@@ -312,7 +312,7 @@ class AgentManager:
     def run(self) -> dict:
         self.authentication()
         if not self.binary or not shutil.which("bun"):
-            raise AgentError("Instale Claude Code e Bun antes de iniciar Channels.")
+            raise AgentError("Install Claude Code and Bun before starting Channels.")
         self.prepare()
         os.chdir(self.project)
         os.execve(
@@ -348,14 +348,12 @@ def control(action: str, provider: str, project: Path, env_file: Path | None) ->
     )
     if action in {"start", "run"}:
         if provider == "claude" and CodexManager(project, env_file).status()["running"]:
-            raise AgentError(
-                "Codex está rodando. Use canvas-agent setup para revisar a troca de agente."
-            )
+            raise AgentError("Codex is running. Use canvas-agent setup to review switching agents.")
         if provider == "codex" and shutil.which("claude"):
             other = AgentManager(project, env_file).current()
             if other and other.get("pid") and other.get("status") in {"busy", "waiting", "idle"}:
                 raise AgentError(
-                    "Claude está rodando. Use canvas-agent setup para revisar a troca de agente."
+                    "Claude is running. Use canvas-agent setup to review switching agents."
                 )
     result = getattr(manager, action)()
     if provider == "claude" and action == "start":
@@ -376,24 +374,24 @@ def control(action: str, provider: str, project: Path, env_file: Path | None) ->
 def display(action: str, provider: str | None, result: dict) -> None:
     from canvas_mcp.agent_setup import LABELS
 
-    label = LABELS.get(provider, "Agente")
+    label = LABELS.get(provider, "Agent")
     if action == "start":
         print(
             f"{label}: "
-            + ("já estava rodando." if result.get("already_running") else "início solicitado.")
+            + ("already running." if result.get("already_running") else "start requested.")
         )
-        print("Confira se o receptor conectou: uv run canvas-agent status")
+        print("Check receiver connection: uv run canvas-agent status")
     elif action == "stop":
-        print(f"{label}: receptor e agendamento local encerrados; conversa e arquivos preservados.")
+        print(f"{label}: receiver and local schedule stopped; conversation and files preserved.")
     elif action == "prepare":
-        print(f"{label}: instalação preparada; nenhum serviço foi ativado.")
+        print(f"{label}: installation prepared; no service has been activated.")
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Controlar o agente Canvas/Telegram com a assinatura do Codex ou Claude Code."
+        description="Control the Canvas/Telegram agent with a Codex or Claude Code subscription."
     )
     parser.add_argument(
         "action",
@@ -402,10 +400,10 @@ def main() -> int:
     parser.add_argument(
         "--provider",
         choices=["codex", "claude"],
-        help="Sobrescreve a escolha salva no .env para este comando.",
+        help="Override the choice saved in .env for this command.",
     )
     parser.add_argument(
-        "--json", action="store_true", help="Saída estruturada dos comandos de controle/status."
+        "--json", action="store_true", help="Structured output for lifecycle/status commands."
     )
     parser.add_argument("--project-dir", type=Path, default=Path.cwd())
     parser.add_argument("--env-file", type=Path)
@@ -424,7 +422,7 @@ def main() -> int:
         env_file = (args.env_file or project / ".env").resolve()
         if args.action == "setup":
             if args.json:
-                raise AgentError("setup é interativo e não aceita --json.")
+                raise AgentError("setup is interactive and does not accept --json.")
             setup(project, env_file, args.provider)
             return 0
         if args.action == "status" and not args.provider:
@@ -454,12 +452,12 @@ def main() -> int:
                     "conversa e arquivos preservados."
                 )
             else:
-                print("Nenhum receptor em segundo plano está ativo neste projeto.")
+                print("No background receiver is active in this project.")
             return 0
         provider = resolve_provider(args.provider, env_file)
         if args.action == "login":
             if args.json:
-                raise AgentError("login abre o fluxo oficial e não aceita --json.")
+                raise AgentError("login opens the official flow and does not accept --json.")
             login(provider, project)
             return 0
 
@@ -479,8 +477,8 @@ def main() -> int:
         if args.action == "start" and not args.json:
             from canvas_mcp.agent_setup import LABELS
 
-            print("Iniciando " + LABELS[provider] + "; usando o login existente desse CLI.")
-            print("Para revisar conta/modo ou trocar de agente, use uv run canvas-agent setup.")
+            print("Starting " + LABELS[provider] + "; using this CLI's existing login.")
+            print("To review the account/mode or switch agents, use uv run canvas-agent setup.")
         result = control(args.action, provider, project, env_file)
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -489,8 +487,8 @@ def main() -> int:
         return 0
     except (EOFError, KeyboardInterrupt):
         print(
-            "\nOperação interrompida. Etapas concluídas permanecem; "
-            "confira uv run canvas-agent status.",
+            "\nOperation interrupted. Completed steps remain in place; "
+            "check uv run canvas-agent status.",
             file=sys.stderr,
         )
         return 130
@@ -498,7 +496,7 @@ def main() -> int:
         message = (
             str(error)
             if isinstance(error, (ValueError, CanvasError))
-            else "Falha ao acessar a configuração local do agente."
+            else "Could not access the local agent configuration."
         )
         print(message, file=sys.stderr)
         return 1

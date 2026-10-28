@@ -16,9 +16,9 @@ def parse_datetime(value: str | None) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
-        raise ValueError("O Canvas retornou uma data inválida.") from None
+        raise ValueError("Canvas returned an invalid date.") from None
     if parsed.tzinfo is None:
-        raise ValueError("O Canvas retornou uma data sem fuso horário.")
+        raise ValueError("Canvas returned a date without a timezone.")
     return parsed
 
 
@@ -31,7 +31,7 @@ class CanvasService:
     def course_id(self, value: int | None) -> int:
         result = value if value is not None else self.settings.default_course_id
         if result is None or isinstance(result, bool) or result < 1:
-            raise ValueError("Informe um course_id positivo ou configure CANVAS_DEFAULT_COURSE_ID.")
+            raise ValueError("Provide a positive course_id or set CANVAS_DEFAULT_COURSE_ID.")
         return result
 
     def _assignment(self, item: dict, *, description: bool = False) -> dict:
@@ -105,7 +105,7 @@ class CanvasService:
     async def get_assignment(self, assignment_id: int, course_id: int | None = None) -> dict:
         course_id = self.course_id(course_id)
         if isinstance(assignment_id, bool) or assignment_id < 1:
-            raise ValueError("assignment_id deve ser um inteiro positivo.")
+            raise ValueError("assignment_id must be a positive integer.")
         item = await self.client.get(
             f"courses/{course_id}/assignments/{assignment_id}", {"include[]": "submission"}
         )
@@ -121,7 +121,7 @@ class CanvasService:
         now: datetime | None = None,
     ) -> dict:
         if all_courses and course_id is not None:
-            raise ValueError("Use course_id ou all_courses, sem combinar os dois.")
+            raise ValueError("Use either course_id or all_courses, without combining them.")
         current = (now or datetime.now(self.timezone)).astimezone(self.timezone)
         if period == "this_week":
             start = (current - timedelta(days=current.weekday())).replace(
@@ -130,7 +130,7 @@ class CanvasService:
         elif period == "next_7_days":
             start = current
         else:
-            raise ValueError("period deve ser this_week ou next_7_days.")
+            raise ValueError("period must be this_week or next_7_days.")
         end = start + timedelta(days=7)
         if all_courses:
             courses = (await self.list_courses())["courses"]
@@ -199,7 +199,7 @@ class CanvasService:
     async def get_page(self, page_url: str, course_id: int | None = None) -> dict:
         course_id = self.course_id(course_id)
         if not page_url or any(char in page_url for char in "/%?#") or page_url in {".", ".."}:
-            raise ValueError("page_url deve ser o slug retornado por list_pages ou list_modules.")
+            raise ValueError("page_url must be a slug returned by list_pages or list_modules.")
         item = await self.client.get(f"courses/{course_id}/pages/{quote(page_url, safe='-')}")
         return {
             "course_id": course_id,

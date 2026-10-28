@@ -64,7 +64,7 @@ class CanvasClient:
         except ValueError:
             safe = False
         if not safe:
-            raise CanvasError("O Canvas retornou uma URL fora da API configurada.")
+            raise CanvasError("Canvas returned a URL outside the configured API.")
         return target
 
     async def _get(self, path: str, params: dict | None = None) -> httpx.Response:
@@ -86,17 +86,17 @@ class CanvasClient:
     ) -> httpx.Response:
         method = method.upper()
         if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}:
-            raise CanvasError("Método HTTP não suportado.")
+            raise CanvasError("Unsupported HTTP method.")
         url = self._safe_url(path, full_api=full_api)
         if graphql_query and not (method == "POST" and urlsplit(url).path == "/api/graphql"):
-            raise CanvasError("A exceção de leitura GraphQL só vale para /api/graphql.")
+            raise CanvasError("The GraphQL read exception only applies to /api/graphql.")
         is_read = method in {"GET", "HEAD", "OPTIONS"} or graphql_query
         if self.read_only and not is_read:
-            raise CanvasError("Escrita desativada por CANVAS_READ_ONLY=true.")
+            raise CanvasError("Writes are disabled by CANVAS_READ_ONLY=true.")
         if sum(value is not None for value in (json_body, form, content)) > 1:
-            raise CanvasError("Use somente um formato de corpo por requisição.")
+            raise CanvasError("Use only one body format per request.")
         if files and (json_body is not None or content is not None):
-            raise CanvasError("Arquivos multipart não podem acompanhar JSON ou corpo bruto.")
+            raise CanvasError("Multipart files cannot accompany JSON or a raw body.")
         headers = {"Content-Type": content_type} if content_type else None
         attempts = 3 if is_read else 1
         for attempt in range(attempts):
@@ -114,10 +114,10 @@ class CanvasClient:
             except httpx.RequestError:
                 if not is_read:
                     raise CanvasError(
-                        "Conexão interrompida durante escrita; o resultado é indeterminado. "
-                        "Confira o Canvas antes de repetir a operação."
+                        "Connection interrupted during a write; the outcome is uncertain. "
+                        "Check Canvas before repeating the operation."
                     ) from None
-                raise CanvasError("Falha de conexão com o Canvas. Tente novamente.") from None
+                raise CanvasError("Could not connect to Canvas. Try again.") from None
             if response.status_code in {429, 503} and attempt < attempts - 1:
                 try:
                     delay = float(response.headers.get("Retry-After", 2**attempt))
@@ -126,18 +126,20 @@ class CanvasClient:
                 await asyncio.sleep(max(0.0, min(delay, 10.0)))
                 continue
             if response.status_code == 401:
-                raise CanvasError("Canvas recusou o token: verifique se foi revogado ou expirou.")
-            if response.status_code == 403:
-                raise CanvasError("Sua conta não tem permissão para executar essa operação.")
-            if response.status_code == 404:
-                raise CanvasError("Recurso não encontrado ou indisponível para sua conta.")
-            if not 200 <= response.status_code < 300:
-                suffix = (
-                    " Tente novamente." if is_read else " Escrita não foi repetida automaticamente."
+                raise CanvasError(
+                    "Canvas rejected the token: check whether it was revoked or expired."
                 )
-                raise CanvasError(f"Canvas retornou HTTP {response.status_code}.{suffix}")
+            if response.status_code == 403:
+                raise CanvasError(
+                    "Your account does not have permission to perform this operation."
+                )
+            if response.status_code == 404:
+                raise CanvasError("Resource not found or unavailable to your account.")
+            if not 200 <= response.status_code < 300:
+                suffix = " Try again." if is_read else " The write was not retried automatically."
+                raise CanvasError(f"Canvas returned HTTP {response.status_code}.{suffix}")
             return response
-        raise CanvasError("Canvas temporariamente indisponível.")
+        raise CanvasError("Canvas is temporarily unavailable.")
 
     def redact(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -152,15 +154,13 @@ class CanvasClient:
         try:
             return self.redact(response.json())
         except ValueError:
-            raise CanvasError("O Canvas retornou uma resposta que não é JSON.") from None
+            raise CanvasError("Canvas returned a non-JSON response.") from None
 
     def response_data(self, response: httpx.Response) -> Any:
         if not response.content:
             return None
         if len(response.content) > 20_000_000:
-            raise CanvasError(
-                "Resposta excede 20 MB; use a ferramenta de download para salvar localmente."
-            )
+            raise CanvasError("Response exceeds 20 MB; use the download tool to save it locally.")
         mime = response.headers.get("Content-Type", "").lower()
         if "json" in mime:
             return self._json(response)
@@ -179,16 +179,14 @@ class CanvasClient:
 
         url = self._safe_url(path, full_api=True)
         if await asyncio.to_thread(destination.exists):
-            raise CanvasError("O arquivo de destino já existe; escolha um caminho novo.")
+            raise CanvasError("The destination file already exists; choose a new path.")
         await asyncio.to_thread(destination.parent.mkdir, parents=True, exist_ok=True, mode=0o700)
         temporary = None
         size = 0
         try:
             async with self._http.stream("GET", url) as response:
                 if not 200 <= response.status_code < 300:
-                    raise CanvasError(
-                        f"Download recusado pelo Canvas: HTTP {response.status_code}."
-                    )
+                    raise CanvasError(f"Canvas rejected the download: HTTP {response.status_code}.")
                 with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as output:
                     temporary = Path(output.name)
                     os.fchmod(output.fileno(), 0o600)
@@ -199,7 +197,7 @@ class CanvasClient:
                 await asyncio.to_thread(os.link, temporary, destination)
         except httpx.RequestError:
             raise CanvasError(
-                "Falha de conexão durante download; nenhum arquivo completo foi salvo."
+                "Connection failed during download; no complete file was saved."
             ) from None
         finally:
             if temporary is not None:
@@ -209,7 +207,7 @@ class CanvasClient:
     async def get(self, path: str, params: dict | None = None) -> dict:
         result = self._json(await self._get(path, params))
         if not isinstance(result, dict):
-            raise CanvasError("Formato inesperado na resposta do Canvas.")
+            raise CanvasError("Unexpected Canvas response format.")
         return result
 
     async def list(self, path: str, params: dict | None = None) -> list[dict]:
@@ -219,21 +217,19 @@ class CanvasClient:
         visited: set[str] = set()
         for _ in range(100):
             if url in visited:
-                raise CanvasError("O Canvas retornou um ciclo na paginação.")
+                raise CanvasError("Canvas returned a pagination cycle.")
             visited.add(url)
             response = await self._get(url, query)
             page = self._json(response)
             if not isinstance(page, list) or any(not isinstance(item, dict) for item in page):
-                raise CanvasError("Formato inesperado na lista retornada pelo Canvas.")
+                raise CanvasError("Unexpected Canvas list format.")
             items.extend(page)
             if len(items) > 10_000:
-                raise CanvasError(
-                    "Consulta excedeu 10.000 itens; use um curso ou filtro específico."
-                )
+                raise CanvasError("Query exceeded 10,000 items; use a specific course or filter.")
             next_page = response.links.get("next", {}).get("url")
             if not next_page:
                 return items
             url = self._safe_url(urljoin(str(response.url), next_page))
             # Follow Canvas's opaque next URL without reapplying the first-page query.
             query = None
-        raise CanvasError("Consulta excedeu 100 páginas; use um curso ou filtro específico.")
+        raise CanvasError("Query exceeded 100 pages; use a specific course or filter.")

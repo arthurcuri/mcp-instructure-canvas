@@ -1,110 +1,82 @@
-# Validação ponta a ponta
+# Validation record
 
-Validação realizada em **14/10/2026**. Esta página registra o escopo; ela não
-contém tokens, IDs de chat, enunciados, nomes de alunos ou entregas pessoais.
+This page records **historical verification**, not a claim that every release or institution has passed live checks. It contains no tokens, chat IDs, course bodies, student names, or personal submissions. The documentation refresh does not run live Canvas writes, send Telegram messages, or activate jobs.
 
-| Fluxo | Verificação | Resultado |
+## October 14, 2026
+
+| Flow | Scope | Recorded result |
 |---|---|---|
-| MCP stdio → Canvas autenticado | Inicialização, lista de ferramentas, cursos, atividades, prazos, módulos e páginas | Passou; conteúdo completo nas ferramentas de detalhe |
-| GitHub Actions → Canvas → Telegram | Execução manual do mesmo workflow diário habilitado às 08h | Passou; Telegram confirmou o envio e o usuário recebeu o resumo |
-| Telegram → Codex → MCP → Canvas → Telegram | Mensagem real do usuário solicitando apenas consulta dos próximos sete dias | Passou; chamada MCP concluída e resposta final do agente |
-| Escopo e datas | Consulta `all_courses=true`, `period=next_7_days` | O agente e o lembrete retornaram a mesma quantidade de atividades |
-| Setup | Provedor/conta, cancelamento, salvar sem iniciar, troca e modo | Testes simulados passam; login só abre após a escolha |
-| Escritas Canvas e automático | HTTP/modelos simulados, verificação de entrega e ledger | Testes passam; nenhuma entrega real usada como teste |
-| Claude Telegram | Implementação oficial Channels e testes simulados | Não validado ao vivo: política Team bloqueou Channels |
-| Imagem MCP e distribuições | Versão, protocolo stdio, catálogo offline e ausência de arquivos privados | Passou em amd64 e arm64 pelo workflow de release |
-| MCP Docker → Canvas real | Mesmas leituras da instalação local, com o `.env` privado | Passou; prazos de todas as matérias coincidiram com o agente/lembrete |
-| Publicação GHCR | Consulta anônima ao manifest da imagem | Passou; download público sem autenticação |
-| Pacotes publicados 0.5.2 | Download do wheel/imagem, SHA256SUMS e consultas reais no Canvas | Passou; handshake anuncia 0.5.2 e os dois retornaram os mesmos prazos |
+| Local stdio MCP → authenticated Canvas | Initialization, tools, courses, assignments, deadlines, modules, and pages | Passed; detail tools returned complete content |
+| Manual GitHub Actions → Canvas → Telegram | Manual run of the daily reminder workflow | Passed; Telegram confirmed delivery and the owner received it |
+| Telegram → Codex → MCP → Canvas → Telegram | Owner's real request to read deadlines across all courses for the next seven days | Passed; completed MCP call and final reply confirmed by the owner |
+| Agent setup | Provider/account choices, cancellation, save without starting, switching, and modes | Mocked tests passed; login opens only after an explicit choice |
+| Canvas writes and automatic worker | Mocked HTTP/model execution, submission verification, and ledger | Passed; no real coursework submitted for testing |
+| Claude Telegram | Official Channels integration with mocked coverage | Live validation blocked by Team organization policy |
+| MCP image/distributions | Version, stdio protocol, offline catalog, and exclusion of private files | Passed on native amd64/arm64 release runners |
+| Docker MCP → real Canvas | Same reads as local installation | Passed; deadlines matched agent/reminder results |
+| GHCR publication | Anonymous manifest access | Passed; public download without authentication |
+| Published 0.5.2 packages | Downloaded wheel/image, checksums, and real Canvas reads | Passed; handshake reported 0.5.2 and deadlines matched |
 
-Execução de lembrete validada:
-[Daily Canvas reminder](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38508719491).
-Release e testes dos pacotes:
-[Release and GitHub Packages 0.5.2](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38560983173).
-O workflow permanece diário, em `America/Sao_Paulo`; o semanal está desativado
-nesta instalação. O agendador pode atrasar, conforme as regras do GitHub Actions.
+Evidence: [manual reminder run](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38508719491) and [0.5.2 release workflow](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38560983173).
 
-No teste da conversa, o Codex foi autenticado com ChatGPT. O histórico persistido
-registrou uma chamada `get_due_assignments` concluída, com os argumentos acima,
-e um turno concluído com resposta final, cuja chegada foi confirmada pelo usuário. A inspeção mostrou apenas status,
-nomes de ferramentas e contagens; não publicou conteúdo da matéria.
+The Codex test used ChatGPT authentication. Private history inspection verified tool names, statuses, counts, and a completed final reply; course content was not published. Manual reminder delivery proves the read/send path, not scheduled dispatch timing.
 
-## Aprovações e contexto — 23/10/2026
+## October 23, 2026: approvals and assignment context
 
-A versão 0.5.3 foi verificada com testes simulados para respostas Sim/Não,
-formulários com campos, expiração, múltiplas solicitações, outro usuário,
-correções no turno ativo e preservação da referência à atividade. O relay usa
-os contratos de elicitação e `turn/steer` do
-[Codex App Server](https://learn.chatgpt.com/docs/app-server).
+Version 0.5.3 added mocked coverage for Yes/No replies, forms with fields, expiration, multiple pending requests, another user, active-turn corrections, and persistent assignment references. The bridge uses elicitation and `turn/steer` contracts from Codex App Server.
 
-O protocolo MCP 0.5.3 passou na consulta autenticada somente de leitura, mantendo
-18 ferramentas e o conteúdo completo nos detalhes. A consulta dos próximos sete
-dias incluiu todas as matérias. Wheel e arquivo fonte passaram na auditoria de
-versões, catálogo e exclusão de arquivos privados.
+Read-only live MCP verification passed with 18 tools and complete details; the next-seven-days query covered all active courses. Wheel/source audits checked versions, catalog inclusion, and private-file exclusion. The personal runtime was restarted with conversation/files preserved, Telegram connected, and automatic mode disabled. A human test of a new Telegram approval is separate from mocked coverage; no Canvas submission was used to validate the correction.
 
-O runtime pessoal foi atualizado e reiniciado com conversa/arquivos preservados,
-Telegram conectado e modo automático desativado. A inspeção do histórico mostrou
-que os turnos anteriores continuavam salvos; o lembrete enviado na nuvem não é
-uma mensagem de entrada para o agente. O teste humano de uma nova aprovação pelo
-Telegram é separado dos testes simulados; nenhuma entrega Canvas é usada para
-validar a correção.
+## October 28, 2026: English onboarding and regression checks
 
-## Reproduzir na sua instalação
+The unreleased checkout passed all 202 mocked tests, Ruff lint/format checks, shell
+syntax validation, distribution build, and archive audit. Local documentation links
+and the overview SVG were also checked.
+
+Live read-only stdio verification against the configured Canvas account passed:
+18 tools were registered, including 12 with read-only MCP annotations; course,
+assignment, deadline, module, and page queries completed. Detail responses retained
+their completeness flags. Only counts/status were inspected, without publishing
+course bodies or credentials.
+
+Canvas writes, Telegram delivery, and agent execution were covered by mocked tests
+in this verification. Services and schedules were not activated or restarted.
+
+## Reproduce on your own installation
+
+Offline contribution checks are in [CONTRIBUTING.md](../CONTRIBUTING.md). The following commands deliberately access your own configured account:
 
 ```sh
-uv sync --locked
 uv run canvas-mcp-server --test
 uv run python scripts/verify_mcp.py
 uv run canvas-agent status
 ```
 
-Para verificar também o Canvas através da imagem, com seu `.env` local e Docker
-ativo, use `uv run python scripts/verify_mcp.py --container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.2`.
+`verify_mcp.py` uses the first active course, or an explicit `--course-id 12345`. No configured default course is required. With no active courses, it still checks the protocol and all-course deadline query, and reports skipped course-detail checks. It prints counts/status rather than course bodies.
 
-O teste MCP ao vivo é de leitura. Para a entrada real do Telegram, o próprio
-dono do chat envia um pedido de consulta ao bot; a Bot API não permite ao servidor
-enviar uma mensagem em nome do usuário. Não rode dois consumidores `getUpdates`.
+To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
 
-Para o lembrete, execute **Daily Canvas reminder → Run workflow** no seu GitHub
-e confira o resumo recebido no Telegram. Isso envia uma mensagem real ao chat
-configurado; não chama um modelo.
+A manual reminder workflow run sends a real message when bot secrets are configured. That is optional integration work, not a contributor requirement.
 
-## Pontualidade do agendamento
+## Schedule timing
 
-Em **14/10/2026**, o workflow configurado para as 08h de São Paulo foi criado
-às **12h43min55s**, e o Telegram confirmou o envio às **12h44min17s**. O evento
-registrado foi `schedule`, não `workflow_dispatch`. A criação tardia do run
-mostra que o disparo chegou depois do horário solicitado; depois de criado,
-o job iniciou em dois segundos e terminou com sucesso.
+On **October 14, 2026**, the workflow requesting 08:00 São Paulo was created at **12:43:55**, and Telegram confirmed delivery at **12:44:17**. The event was `schedule`, not `workflow_dispatch`. Once created, the job started in two seconds and completed successfully. Counts and one delivery confirmation were logged; no Canvas/Telegram authentication error was recorded.
 
-Evidência: [execução automática atrasada](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38591893378).
-O log registrou somente contagens e a confirmação de uma mensagem; não houve
-falha registrada de autenticação Canvas ou Telegram nessa execução.
+Evidence: [delayed scheduled run](https://github.com/arthurcuri/mcp-instructure-canvas/actions/runs/38591893378). The available history does not identify the specific platform cause. GitHub documents possible schedule delays/dropped runs, especially near the start of an hour. See [schedule behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
-O teste manual anterior comprovou consulta/envio, não pontualidade do cron.
-A execução automática confirmou o envio diário, com atraso; essa evidência
-não garante entrega pontual às 08h nas próximas execuções.
-O GitHub documenta que `schedule` pode atrasar ou perder disparos sob carga,
-especialmente no início da hora; o motivo específico deste atraso não aparece
-no histórico disponível. Veja [schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-
-Para inspecionar o disparo:
+To inspect dispatch timestamps:
 
 ```sh
 gh run list --workflow daily-canvas.yml --limit 10 \
   --json databaseId,event,createdAt,startedAt,conclusion,url
 ```
 
-Os timestamps da API estão em UTC; converta para o fuso escolhido no workflow.
-Um `workflow_dispatch` bem-sucedido não comprova que um `schedule` disparou no horário.
+API timestamps are UTC; convert them to the workflow timezone. A successful manual run does not establish that a schedule ran on time.
 
-## O que esta validação não afirma
+## Limits of this evidence
 
-- Não demonstra permissão para cada endpoint de professor/administrador: a conta
-  continua limitada pelas permissões que o Canvas concede.
-- Não demonstra entregas reais automáticas: a validação não modifica notas,
-  atividades ou submissões, e não ativa `CANVAS_AGENT_AUTO` na instalação pessoal.
-- Não demonstra Claude Channels liberado pelo Team: o administrador precisa
-  habilitar a política para testar esse receptor na instituição.
-- Não garante execução local com o Mac dormindo/desligado. O lembrete na nuvem
-  continua independente do agente local.
+- It does not demonstrate permission for every teacher/admin endpoint.
+- It does not establish real automatic submissions; those paths use mocked testing.
+- It does not establish that Claude Channels is allowed by an institution's policy.
+- It does not guarantee punctual cloud delivery or local execution while a computer is asleep/offline.
+- Historical published-package checks do not verify uncommitted source changes or future releases.

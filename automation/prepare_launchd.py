@@ -23,7 +23,7 @@ def main() -> None:
     destination = directory / "com.canvas-mcp.weekly.plist"
     destination.write_bytes(plistlib.dumps(job))
     destination.chmod(0o600)
-    print(f"Modelo preparado em {destination}. O agendamento não foi ativado.")
+    print(f"Template prepared at {destination}. Scheduling has not been activated.")
 
 
 if __name__ == "__main__":

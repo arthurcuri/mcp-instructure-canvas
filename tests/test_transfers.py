@@ -88,7 +88,7 @@ async def test_upload_refuses_external_authenticated_completion(settings, tmp_pa
                 )
             ),
         )
-        with pytest.raises(CanvasError, match="fora da API"):
+        with pytest.raises(CanvasError, match="outside the configured API"):
             await transfers.upload("files.upload_file", str(source), {"folder_id": 1})
         assert len(api_calls) == 1
     finally:
@@ -199,7 +199,7 @@ async def test_failed_download_leaves_no_partial_file(settings, tmp_path):
                 lambda request: httpx.Response(200, stream=Interrupted())
             ),
         )
-        with pytest.raises(CanvasError, match="interrompido"):
+        with pytest.raises(CanvasError, match="interrupted"):
             await transfers.download_file(1, str(tmp_path / "file.bin"))
         assert list(tmp_path.iterdir()) == []
     finally:

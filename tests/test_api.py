@@ -79,7 +79,7 @@ async def test_writes_are_never_automatically_retried(settings, method, status):
 
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
-        with pytest.raises(CanvasError, match="não foi repetida") as error:
+        with pytest.raises(CanvasError, match="not retried") as error:
             await client.request(method, "/api/v1/test", full_api=True)
         assert settings.api_token not in str(error.value)
         assert len(calls) == 1
@@ -96,7 +96,7 @@ async def test_interrupted_write_reports_indeterminate_result(settings):
 
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
-        with pytest.raises(CanvasError, match="indeterminado") as error:
+        with pytest.raises(CanvasError, match="uncertain") as error:
             await client.request("POST", "/api/v1/test", full_api=True)
         assert settings.api_token not in str(error.value)
         assert len(calls) == 1
@@ -175,21 +175,21 @@ async def test_required_fields_and_method_separation_fail_before_network(setting
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
         api = CanvasApi(client)
-        with pytest.raises(ValueError, match="obrigatório"):
+        with pytest.raises(ValueError, match="required"):
             await api.write(
                 "submissions.submit_assignment_courses", {"course_id": 1, "assignment_id": 2}
             )
-        with pytest.raises(ValueError, match="opções"):
+        with pytest.raises(ValueError, match="choices"):
             await api.write(
                 "submissions.submit_assignment_courses",
                 {"course_id": 1, "assignment_id": 2},
                 json_body={"submission": {"submission_type": "invalid"}},
             )
-        with pytest.raises(ValueError, match="leitura"):
+        with pytest.raises(ValueError, match="read operation"):
             await api.write("users.get_user_profile", {"user_id": "self"})
-        with pytest.raises(ValueError, match="escrita"):
+        with pytest.raises(ValueError, match="write operation"):
             await api.read("submissions.submit_assignment_courses")
-        with pytest.raises(ValueError, match="caminho"):
+        with pytest.raises(ValueError, match="path parameters"):
             await api.read("users.get_user_profile", {"user_id": "self", "unexpected": 1})
     finally:
         await client.close()
@@ -269,7 +269,7 @@ async def test_readonly_blocks_mutations_but_allows_graphql_queries(settings):
         await CanvasApi(client).graphql("{ __typename }")
         with pytest.raises(CanvasError, match="READ_ONLY"):
             await CanvasApi(client).graphql("mutation { remove { id } }", mutation=True)
-        with pytest.raises(CanvasError, match="exceção"):
+        with pytest.raises(CanvasError, match="exception"):
             await client.request("POST", "/api/v1/test", full_api=True, graphql_query=True)
         assert len(calls) == 1
     finally:
@@ -294,7 +294,7 @@ async def test_api_download_keeps_binary_out_of_context_and_refuses_overwrite(se
         assert output.read_bytes() == b"file content"
         assert output.stat().st_mode & 0o777 == 0o600
         assert "file content" not in json.dumps(result)
-        with pytest.raises(CanvasError, match="já existe"):
+        with pytest.raises(CanvasError, match="already exists"):
             await CanvasApi(client).download(
                 "users.get_user_profile", str(output), {"user_id": "self"}
             )

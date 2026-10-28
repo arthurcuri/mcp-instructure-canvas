@@ -1,0 +1,30 @@
+name: Feature proposal
+description: Discuss a new capability or improvement before implementation.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the user and use case without personal academic data.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include an example and any effects on permissions, privacy, or compatibility.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to contribute?
+      options:
+        - I am sharing an idea
+        - I can help test or document it
+        - I would like to implement it after discussion

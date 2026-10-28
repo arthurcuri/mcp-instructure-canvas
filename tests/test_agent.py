@@ -128,7 +128,7 @@ def test_start_does_not_duplicate_a_running_session(project, monkeypatch):
 def test_api_authentication_is_rejected_before_agent_launch(project, monkeypatch):
     manager = AgentManager(project)
     monkeypatch.setattr(manager, "call", lambda args: '{"loggedIn":true,"authMethod":"api_key"}')
-    with pytest.raises(AgentError, match="assinatura"):
+    with pytest.raises(AgentError, match="subscription"):
         manager.start()
     assert not manager.state_file.exists()
 

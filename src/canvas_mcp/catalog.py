@@ -24,9 +24,7 @@ class ApiCatalog:
     def get(self, operation_id: str) -> dict:
         operation = self.operations.get(operation_id)
         if operation is None:
-            raise CanvasError(
-                "Operação desconhecida. Use search_canvas_operations para obter o ID."
-            )
+            raise CanvasError("Unknown operation. Use search_canvas_operations to find its ID.")
         return operation
 
     def search(
@@ -37,9 +35,9 @@ class ApiCatalog:
         limit: int = 10,
     ) -> dict:
         if not 1 <= limit <= 50:
-            raise ValueError("limit deve estar entre 1 e 50.")
+            raise ValueError("limit must be between 1 and 50.")
         if resource and resource not in self.data["resources"]:
-            raise ValueError("Grupo desconhecido no catálogo da API.")
+            raise ValueError("Unknown resource group in the API catalog.")
         tokens = query.casefold().split()
         matches = []
         for operation in self.operations.values():
@@ -77,8 +75,8 @@ class ApiCatalog:
             missing = names - set(supplied)
             extra = set(supplied) - names
             if missing:
-                raise ValueError("Informe os parâmetros de caminho: " + ", ".join(sorted(missing)))
-            raise ValueError("Parâmetros de caminho não reconhecidos: " + ", ".join(sorted(extra)))
+                raise ValueError("Provide path parameters: " + ", ".join(sorted(missing)))
+            raise ValueError("Unrecognized path parameters: " + ", ".join(sorted(extra)))
         path = operation["path"]
         for name in names:
             value = supplied[name]
@@ -87,7 +85,7 @@ class ApiCatalog:
                 or not isinstance(value, (str, int))
                 or str(value) in {"", ".", ".."}
             ):
-                raise ValueError("Os parâmetros de caminho devem ser IDs ou strings não vazias.")
+                raise ValueError("Path parameters must be IDs or nonempty strings.")
             path = path.replace("{" + name + "}", quote(str(value), safe=""))
         return path
 
@@ -124,8 +122,8 @@ def validate_required(
             if found:
                 break
         if parameter.get("required") and (not found or value is None):
-            raise ValueError(f"Parâmetro obrigatório ausente: {parameter['name']}")
+            raise ValueError(f"Missing required parameter: {parameter['name']}")
         if found and value is not None and parameter.get("enum"):
             values = value if isinstance(value, list) else [value]
             if any(item not in parameter["enum"] for item in values):
-                raise ValueError(f"Valor fora das opções documentadas: {parameter['name']}")
+                raise ValueError(f"Value outside the documented choices: {parameter['name']}")

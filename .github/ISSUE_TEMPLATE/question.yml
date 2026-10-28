@@ -1,0 +1,11 @@
+name: Setup or usage question
+description: Ask about configuration, supported behavior, or contributing.
+title: "[Question]: "
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Include the guide you followed and your version/client/platform. Never include credentials or private course data.
+    validations:
+      required: true

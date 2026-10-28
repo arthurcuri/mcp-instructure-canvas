@@ -16,7 +16,7 @@ from canvas_mcp.client import CanvasClient, CanvasError
 def local_file(value: str) -> Path:
     path = Path(value)
     if not path.is_absolute() or not path.is_file():
-        raise ValueError("Informe o caminho absoluto de um arquivo local regular.")
+        raise ValueError("Provide the absolute path to a regular local file.")
     return path
 
 
@@ -53,7 +53,7 @@ class CanvasApi:
     ) -> dict:
         operation = self.catalog.get(operation_id)
         if operation["method"] not in {"GET", "HEAD", "OPTIONS"}:
-            raise ValueError("Use canvas_api_write para essa operação de escrita.")
+            raise ValueError("Use canvas_api_write for this write operation.")
         path = self.catalog.render_path(operation, path_parameters)
         validate_required(operation, query_parameters, None)
         query = dict(query_parameters or {})
@@ -67,18 +67,18 @@ class CanvasApi:
         if paginate and isinstance(data, list):
             while next_page:
                 if pages >= 100 or len(data) >= 10_000:
-                    raise CanvasError("Paginação excedeu 100 páginas/10.000 itens. Use filtros.")
+                    raise CanvasError("Pagination exceeded 100 pages/10,000 items. Use filters.")
                 url = self.client._safe_url(str(response.url.join(next_page)), full_api=True)
                 if url in visited:
-                    raise CanvasError("O Canvas retornou um ciclo na paginação.")
+                    raise CanvasError("Canvas returned a pagination cycle.")
                 visited.add(url)
                 response = await self.client.request(operation["method"], url, full_api=True)
                 page = self.client.response_data(response)
                 if not isinstance(page, list):
-                    raise CanvasError("O Canvas mudou o formato durante a paginação.")
+                    raise CanvasError("Canvas changed the response format during pagination.")
                 data.extend(page)
                 if len(data) > 10_000:
-                    raise CanvasError("Paginação excedeu 10.000 itens. Use filtros.")
+                    raise CanvasError("Pagination exceeded 10,000 items. Use filters.")
                 pages += 1
                 next_page = response.links.get("next", {}).get("url")
         if next_page:
@@ -106,14 +106,14 @@ class CanvasApi:
     ) -> dict:
         operation = self.catalog.get(operation_id)
         if operation["method"] in {"GET", "HEAD", "OPTIONS"}:
-            raise ValueError("Use canvas_api_read para essa operação de leitura.")
+            raise ValueError("Use canvas_api_read for this read operation.")
         if self.client.read_only:
-            raise CanvasError("Escrita desativada por CANVAS_READ_ONLY=true.")
+            raise CanvasError("Writes are disabled by CANVAS_READ_ONLY=true.")
         body_formats = (json_body, form_parameters, raw_body, binary_body_file)
         if sum(value is not None for value in body_formats) > 1:
-            raise ValueError("Escolha JSON, formulário, corpo textual ou arquivo binário.")
+            raise ValueError("Choose JSON, form data, a text body, or a binary file.")
         if file_parameters and (json_body is not None or raw_body is not None or binary_body_file):
-            raise ValueError("Arquivos multipart só podem acompanhar parâmetros de formulário.")
+            raise ValueError("Multipart files can only accompany form parameters.")
         path = self.catalog.render_path(operation, path_parameters)
         body = json_body if json_body is not None else form_parameters
         validate_required(operation, query_parameters, body, file_parameters)
@@ -161,13 +161,13 @@ class CanvasApi:
     ) -> dict:
         operation = self.catalog.get(operation_id)
         if operation["method"] != "GET":
-            raise ValueError("Somente operações GET podem ser baixadas.")
+            raise ValueError("Only GET operations can be downloaded.")
         path = self.catalog.render_path(operation, path_parameters)
         validate_required(operation, query_parameters, None)
         url = str(httpx.URL(self.client._safe_url(path, full_api=True), params=query_parameters))
         target = Path(destination)
         if not target.is_absolute():
-            raise ValueError("Informe um caminho absoluto para o download.")
+            raise ValueError("Provide an absolute download path.")
         return await self.client.download(url, target)
 
     async def graphql(
@@ -181,12 +181,12 @@ class CanvasApi:
         try:
             operation = get_operation_ast(parse(query), operation_name)
         except GraphQLError:
-            raise ValueError("Documento GraphQL inválido.") from None
+            raise ValueError("Invalid GraphQL document.") from None
         if operation is None:
-            raise ValueError("Selecione uma operação GraphQL válida com operation_name.")
+            raise ValueError("Select a valid GraphQL operation using operation_name.")
         expected = OperationType.MUTATION if mutation else OperationType.QUERY
         if operation.operation != expected:
-            raise ValueError("Use a ferramenta GraphQL correspondente a query ou mutation.")
+            raise ValueError("Use the GraphQL tool that matches query or mutation.")
         response = await self.client.request(
             "POST",
             "/api/graphql",

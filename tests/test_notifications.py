@@ -45,8 +45,8 @@ async def test_reminder_sends_plain_text_only_to_configured_chat(telegram_settin
         assert payload["chat_id"] == "123"
         assert "parse_mode" not in payload
         assert "Work <b>plain text</b>" in payload["text"]
-        assert "30/06 às 09:00" in payload["text"]
-        assert "Quer ajuda" in payload["text"]
+        assert "2030-06-30 at 09:00" in payload["text"]
+        assert "Need help" in payload["text"]
         assert "Authorization" not in request.headers
         return httpx.Response(200, json={"ok": True, "result": {"message_id": 7}})
 
@@ -86,7 +86,7 @@ def test_long_reminder_is_split_without_losing_text(report):
     assert len(messages) > 1
     assert all(0 < len(message.encode("utf-16-le")) // 2 < 4096 for message in messages)
     assert "👩‍💻" * 3000 in "".join(messages)
-    assert "Quer ajuda" in messages[-1]
+    assert "Need help" in messages[-1]
 
 
 async def test_setup_lists_only_private_chat_ids_without_sending(telegram_settings):

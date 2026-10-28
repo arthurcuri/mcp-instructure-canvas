@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible problem with Canvas MCP.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. Remove tokens, .env contents, private chat IDs, signed URLs, and student/course data. Report vulnerabilities privately through SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of canvas-mcp-server --version, or the commit if running from source.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, MCP client/version, and installation method (source, wheel, or Docker).
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use fictitious IDs and minimal examples. State whether read-only mode is enabled.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized errors
+      description: Include relevant errors. Do not paste complete provider logs or course bodies.
+    validations:
+      required: true

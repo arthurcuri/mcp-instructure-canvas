@@ -57,7 +57,7 @@ def test_invalid_canvas_url_is_rejected_without_echoing_input(tmp_path, url):
 
 def test_missing_token_and_missing_explicit_file_fail(tmp_path):
     path = tmp_path / "config.env"
-    with pytest.raises(ConfigurationError, match="não existe"):
+    with pytest.raises(ConfigurationError, match="does not exist"):
         Settings.load(path)
     path.write_text("CANVAS_API_URL=https://canvas.example.test\n")
     with pytest.raises(ConfigurationError, match="CANVAS_API_TOKEN"):

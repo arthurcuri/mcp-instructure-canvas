@@ -16,14 +16,14 @@ class AgentPolicy:
         values = dotenv_values(env_file, interpolate=False)
         value = str(os.environ.get("CANVAS_AGENT_AUTO", values.get("CANVAS_AGENT_AUTO") or "false"))
         if value.strip().lower() not in {"true", "false"}:
-            raise ValueError("CANVAS_AGENT_AUTO deve ser true ou false.")
+            raise ValueError("CANVAS_AGENT_AUTO must be true or false.")
         return cls(value.strip().lower() == "true")
 
     def instructions(self, project: Path, *, automated_task: bool = False) -> str:
         base = (project / "automation/agent_instructions.md").read_text()
         if automated_task:
             if not self.automatic:
-                raise ValueError("O modo automático está desativado; aguarde um pedido do usuário.")
+                raise ValueError("Automatic mode is disabled; wait for an owner request.")
             return base + (
                 "\nTrusted runtime policy: CANVAS_AGENT_AUTO=true. This scheduled request is "
                 "the owner's standing authorization to prepare AND submit the specific assignment "

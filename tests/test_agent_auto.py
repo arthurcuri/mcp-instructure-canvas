@@ -39,7 +39,7 @@ def test_boolean_policy_is_explicit(project, value, expected):
 
 def test_invalid_boolean_never_silently_enables_automatic_delivery(project):
     (project / ".env").write_text("CANVAS_AGENT_AUTO=yes\n")
-    with pytest.raises(ValueError, match="true ou false"):
+    with pytest.raises(ValueError, match="true or false"):
         AgentPolicy.load(project / ".env")
 
 
@@ -168,7 +168,7 @@ def test_local_schedule_contains_no_secrets_and_false_removes_only_its_job(proje
 
 
 def test_automatic_authorization_is_scoped_to_trusted_scheduled_work(project):
-    with pytest.raises(ValueError, match="desativado"):
+    with pytest.raises(ValueError, match="disabled"):
         AgentPolicy(False).instructions(project, automated_task=True)
     prompt = AgentPolicy(True).instructions(project, automated_task=True)
     assert "standing authorization" in prompt and "specific assignment" in prompt

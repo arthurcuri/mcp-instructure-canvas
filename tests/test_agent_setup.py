@@ -87,7 +87,7 @@ def test_cancel_never_saves_or_activates_and_does_not_accept_cached_account_impl
     control.assert_not_called()
     native_login.assert_not_called()
     output = capsys.readouterr().out
-    assert "student@example.test" in output and "Revise" in output
+    assert "student@example.test" in output and "Review" in output
     assert "synthetic-canvas" not in output and "synthetic-telegram" not in output
 
 
@@ -126,7 +126,7 @@ def test_switch_stops_old_provider_only_after_final_review(project, monkeypatch,
     calls = []
 
     def control(action, provider, *args):
-        assert "Revise" in capsys.readouterr().out if not calls else True
+        assert "Review" in capsys.readouterr().out if not calls else True
         assert selected_provider(env) == "claude"
         calls.append((action, provider))
         return {"started": action == "start"}
@@ -184,7 +184,7 @@ def test_noninteractive_setup_does_not_read_credentials_or_launch_login(project,
     monkeypatch.setattr("canvas_mcp.agent_setup.interactive_terminal", lambda: False)
     probe = Mock()
     monkeypatch.setattr("canvas_mcp.agent_setup.identity", probe)
-    with pytest.raises(ValueError, match="Terminal interativo"):
+    with pytest.raises(ValueError, match="interactive terminal"):
         setup(project, project / "missing.env")
     probe.assert_not_called()
 
@@ -246,7 +246,7 @@ def test_cli_status_reports_both_providers_without_selecting_one(project, monkey
     monkeypatch.setattr("sys.argv", ["canvas-agent", "status", "--project-dir", str(project)])
     assert main() == 0
     output = capsys.readouterr().out
-    assert "Codex / ChatGPT: parado" in output and "Claude Code / Claude: parado" in output
+    assert "Codex / ChatGPT: stopped" in output and "Claude Code / Claude: stopped" in output
     assert selected_provider(project / ".env") is None
 
 
@@ -290,7 +290,7 @@ def test_unknown_receiver_prevents_activation_before_saving_or_stopping(project,
     control = Mock()
     monkeypatch.setattr("canvas_mcp.agent.control", control)
     answers(monkeypatch, ["1", "1", "1", "1"])
-    with pytest.raises(ValueError, match="verificar todos"):
+    with pytest.raises(ValueError, match="check all"):
         setup(project, env)
     assert env.read_bytes() == before
     control.assert_not_called()

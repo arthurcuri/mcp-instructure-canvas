@@ -27,7 +27,7 @@ class Settings:
     def load(cls, env_file: Path | None = None) -> "Settings":
         path = env_file if env_file is not None else Path.cwd() / ".env"
         if env_file is not None and not path.is_file():
-            raise ConfigurationError("O arquivo indicado em --env-file não existe.")
+            raise ConfigurationError("The file specified by --env-file does not exist.")
         values = dotenv_values(path, interpolate=False) if path.is_file() else {}
 
         def read(name: str, default: str = "") -> str:
@@ -51,29 +51,29 @@ class Settings:
             valid = False
         if not valid:
             raise ConfigurationError(
-                "CANVAS_API_URL deve ser a URL HTTPS da instituição, com ou sem /api/v1."
+                "CANVAS_API_URL must be your institution's HTTPS URL, with or without /api/v1."
             )
         api_url = urlunsplit(("https", url.netloc, "/api/v1", "", ""))
         token = read("CANVAS_API_TOKEN")
         if not token or any(char.isspace() for char in token):
-            raise ConfigurationError("Configure CANVAS_API_TOKEN com um token válido no .env.")
+            raise ConfigurationError("Set CANVAS_API_TOKEN to a valid token in .env.")
 
         course = read("CANVAS_DEFAULT_COURSE_ID")
         if course and (not course.isdecimal() or int(course) < 1):
-            raise ConfigurationError("CANVAS_DEFAULT_COURSE_ID deve ser um inteiro positivo.")
+            raise ConfigurationError("CANVAS_DEFAULT_COURSE_ID must be a positive integer.")
         timezone = read("CANVAS_TIMEZONE", "America/Sao_Paulo")
         try:
             ZoneInfo(timezone)
         except (ValueError, ZoneInfoNotFoundError):
-            raise ConfigurationError("CANVAS_TIMEZONE deve ser um fuso IANA válido.") from None
+            raise ConfigurationError("CANVAS_TIMEZONE must be a valid IANA timezone.") from None
         expiry = read("CANVAS_TOKEN_EXPIRES_AT")
         try:
             expires_at = date.fromisoformat(expiry) if expiry else None
         except ValueError:
-            raise ConfigurationError("CANVAS_TOKEN_EXPIRES_AT deve usar YYYY-MM-DD.") from None
+            raise ConfigurationError("CANVAS_TOKEN_EXPIRES_AT must use YYYY-MM-DD.") from None
         read_only = read("CANVAS_READ_ONLY", "false").lower()
         if read_only not in {"true", "false", "1", "0"}:
-            raise ConfigurationError("CANVAS_READ_ONLY deve ser true ou false.")
+            raise ConfigurationError("CANVAS_READ_ONLY must be true or false.")
         return cls(
             api_url,
             token,

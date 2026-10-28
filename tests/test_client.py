@@ -54,7 +54,7 @@ async def test_unsafe_pagination_never_sends_token_to_next_url(settings, target)
 
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
-        with pytest.raises(CanvasError, match="fora da API"):
+        with pytest.raises(CanvasError, match="outside the configured API"):
             await client.list("courses")
         assert len(calls) == 1
     finally:
@@ -113,7 +113,7 @@ async def test_cyclic_pagination_fails_instead_of_returning_partial_data(setting
 
     client = CanvasClient(settings, transport=httpx.MockTransport(handle))
     try:
-        with pytest.raises(CanvasError, match="ciclo"):
+        with pytest.raises(CanvasError, match="cycle"):
             await client.list("courses")
     finally:
         await client.close()
@@ -125,7 +125,7 @@ async def test_invalid_json_is_a_redacted_failure(settings):
         transport=httpx.MockTransport(lambda request: httpx.Response(200, text=settings.api_token)),
     )
     try:
-        with pytest.raises(CanvasError, match="não é JSON") as error:
+        with pytest.raises(CanvasError, match="non-JSON") as error:
             await client.get("courses/1")
         assert settings.api_token not in str(error.value)
     finally:

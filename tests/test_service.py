@@ -118,7 +118,7 @@ async def test_all_courses_aggregates_active_courses_and_fails_on_ambiguous_scop
         )
         assert result["courses_checked"] == [1, 2]
         assert [item["course_name"] for item in result["assignments"]] == ["A", "B"]
-        with pytest.raises(ValueError, match="sem combinar"):
+        with pytest.raises(ValueError, match="without combining"):
             await service.get_due_assignments(course_id=1, all_courses=True)
     finally:
         await client.close()
@@ -152,6 +152,6 @@ def test_html_text_preserves_readable_links_and_skips_scripts():
         '<script>secret()</script><style>hide</style><img alt="Diagrama">'
     )
     assert "Leia & responda o PDF (/courses/1/files/2)." in result
-    assert "[Imagem: Diagrama]" in result
+    assert "[Image: Diagrama]" in result
     assert "secret" not in result
     assert "hide" not in result

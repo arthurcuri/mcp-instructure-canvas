@@ -1,21 +1,18 @@
-# Pacotes e releases
+# Packages and releases
 
-O [README](../README.md) continua sendo o caminho recomendado para instalar as
-três funcionalidades e configurar o agente. Os pacotes permitem também usar o
-MCP de forma independente, sem copiar dados pessoais para uma imagem ou release.
+The [source setup](setup.md) supports the complete MCP, reminder, and agent workflow. Release packages also support a standalone MCP installation.
 
-| Distribuição | Conteúdo | Uso |
+| Distribution | Contents | Use |
 |---|---|---|
-| [GitHub Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) | Wheel, fonte e SHA256SUMS | Instalar o MCP com Python/uv |
-| [GitHub Packages](https://github.com/arthurcuri/mcp-instructure-canvas/pkgs/container/mcp-instructure-canvas) | Imagem OCI, Linux amd64/arm64 | Iniciar o MCP local com Docker |
-| Checkout Git | Código, automação, instruções e skills | Configurar lembretes e agente Codex/Claude |
+| [GitHub Releases](https://github.com/arthurcuri/mcp-instructure-canvas/releases/latest) | Wheel, source archive, SHA256SUMS | Install with Python/uv |
+| [GitHub Packages](https://github.com/arthurcuri/mcp-instructure-canvas/pkgs/container/mcp-instructure-canvas) | OCI image for Linux amd64/arm64 | Run local MCP with Docker |
+| Git checkout | Source, automation, instructions, and skills | Develop or configure reminders/agents |
 
-## Instalar o wheel
+## Install a release wheel
 
-1. Baixe o `.whl` e `SHA256SUMS` da release desejada.
-2. Confira o hash do wheel: `shasum -a 256 mcp_instructure_canvas-0.5.3-py3-none-any.whl`
-   no macOS, ou `sha256sum` no Linux. Compare a linha correspondente em SHA256SUMS.
-3. Em um ambiente Python 3.11+:
+1. Download the `.whl` and `SHA256SUMS` from the desired release.
+2. Check the wheel hash using `shasum -a 256 mcp_instructure_canvas-0.5.3-py3-none-any.whl` on macOS, or `sha256sum` on Linux, and compare the matching checksum line.
+3. In a Python 3.11+ environment:
 
    ```sh
    python3 -m venv .venv
@@ -23,35 +20,29 @@ MCP de forma independente, sem copiar dados pessoais para uma imagem ou release.
    .venv/bin/canvas-mcp-server --version
    ```
 
-4. Configure seu `.env` privado e registre o caminho absoluto do executável no
-   cliente MCP, passando `--env-file /caminho/privado/.env`.
+4. Configure your private `.env` and register the absolute executable path with `--env-file /private/path/.env` in your MCP client.
 
-O wheel contém o catálogo Canvas e os comandos Python. O agente precisa também
-do checkout e das instruções/skills; use o fluxo completo do README para ele.
-Não há publicação PyPI nesta release: os arquivos Python vêm do GitHub Releases.
+The wheel includes the catalog and Python commands. The complete agent workflow also needs the checkout's instructions and skills. Python release files are distributed through GitHub Releases; this project does not currently publish to PyPI.
 
-## Docker local
+## Local Docker
 
-Com o Docker iniciado e seu `.env` privado preenchido, execute:
+With Docker running and your private `.env` configured:
 
 ```sh
 docker pull ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3
 docker run --rm -i --env-file .env ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3
 ```
 
-O processo usa stdio; iniciado sozinho, fica esperando mensagens MCP. Não publica
-porta nem hospeda um endpoint remoto. Use `-i`, sem `-t`, ao registrar no cliente.
-
-Exemplo de cliente compatível com JSON:
+The process waits for MCP messages on stdio. It exposes no HTTP port. Use `-i` without `-t` in client configuration:
 
 ```json
 {
   "mcpServers": {
-    "canvas-pucminas": {
+    "canvas": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
-        "--env-file", "/caminho/privado/.env",
+        "--env-file", "/private/path/.env",
         "ghcr.io/arthurcuri/mcp-instructure-canvas:v0.5.3"
       ]
     }
@@ -59,50 +50,23 @@ Exemplo de cliente compatível com JSON:
 }
 ```
 
-O cliente precisa encontrar `docker` no PATH; use o caminho absoluto quando
-necessário. O Docker escolhe amd64/arm64 para o host. A imagem executa somente o
-MCP: a configuração do Telegram, GitHub Actions e agente é feita no checkout.
+The client must find Docker in PATH; use an absolute executable path when necessary. Docker selects the native image architecture. The image starts only MCP; configure reminders and agents from the checkout.
 
-### Arquivos e volumes
+### Files and volumes
 
-Uploads/downloads usam caminhos de dentro do container. Para compartilhar uma
-pasta local, acrescente `--user "$(id -u):$(id -g)"` e
-`--volume "$PWD/.local/files:/files"` ao `docker run`, após criar essa pasta.
-Dentro das ferramentas MCP, use `/files/...`; o caminho do Mac não existe dentro
-do container sem um volume. Esses argumentos são expandidos no shell; em uma
-configuração JSON, informe UID/GID e caminhos absolutos já resolvidos.
+Tool paths refer to the container filesystem. To share files, first create `.local/files`, then add `--user "$(id -u):$(id -g)" --volume "$PWD/.local/files:/files"` to `docker run`. Use `/files/...` inside MCP tool arguments. In JSON configuration, replace shell expansions with numeric UID/GID and absolute host paths.
 
-### Visibilidade do primeiro pacote
+### Package visibility
 
-Esta distribuição foi verificada com download anônimo e está pública. Se um
-fork ou uma primeira publicação resultar em pacote privado, o proprietário pode
-abrir **Packages → pacote → Package settings → Change visibility → Public** para
-permitir download sem login. A visibilidade precisa ser conferida na publicação;
-publicar a imagem não altera o login do Codex/Claude.
-Veja [visibilidade](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+Anonymous download of the maintainer's published image was verified in the [validation record](validation.md). A fork's first publication may be private. Its owner can change **Packages → package → Package settings → Change visibility → Public** when public access is intended. Verify visibility after publication; publishing an image does not authenticate an agent account.
 
-## Publicar uma versão
+## Maintainer release procedure
 
-1. Atualize `pyproject.toml`, `src/canvas_mcp/__init__.py`, lock, changelog e
-   `docs/releases/<versão>.md`.
-2. Execute os checks descritos em AGENTS.md, faça push e aguarde o CI.
-3. Crie e envie a tag da versão, por exemplo:
+1. Update `pyproject.toml`, `src/canvas_mcp/__init__.py`, `uv.lock`, the changelog, and `docs/releases/<version>.md`.
+2. Run all checks in [CONTRIBUTING.md](../CONTRIBUTING.md), push the reviewed changes, and wait for CI.
+3. Create and push the matching tag, for example `git tag v0.5.3` followed by `git push origin v0.5.3` for that version.
+4. The release workflow validates the tag, tests native amd64/arm64 containers, publishes images, tests/builds Python distributions, audits archive contents, and creates a release with checksums.
 
-   ```sh
-   git tag v0.5.3
-   git push origin v0.5.3
-   ```
+The workflow uses the repository's temporary `GITHUB_TOKEN`; it needs no Canvas, Telegram, model-provider, or PyPI credentials. Manual dispatch must target the version tag, not a branch. Resume a failed publication only after inspecting existing assets; the current release command does not overwrite an existing release.
 
-4. O workflow **Release and GitHub Packages** valida a tag, testa o MCP em
-   containers nativos amd64/arm64 e publica as imagens; depois testa/builda os
-   arquivos Python, verifica os arquivos e cria a release com SHA256SUMS.
-
-O workflow usa o `GITHUB_TOKEN` temporário do próprio repositório; não precisa de
-token Canvas, bot Telegram, login de agente ou credencial PyPI. A publicação pode
-ser refeita manualmente **a partir da tag**, para retomar uma execução que falhou.
-Ele não altera arquivos ou releases já publicados para esconder uma falha.
-
-A imagem tem labels de origem, licença MIT, versão e commit. As versões específicas
-são recomendadas para configurações; `latest` acompanha a última publicação.
-Veja [Container registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-e [GitHub Packages](https://docs.github.com/en/packages/learn-github-packages/introduction-to-github-packages).
+Images carry source, MIT license, version, and revision metadata. Prefer a version tag in client configuration; `latest` follows the newest publication. See the [workflow](../.github/workflows/release.yml) and [GitHub Container registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).

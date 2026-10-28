@@ -56,24 +56,23 @@ def save_report(path: Path, report: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Consultar prazos, salvar relatório e opcionalmente avisar no Telegram, sem IA."
+        description="Read deadlines, save a report, and optionally notify Telegram, without AI."
     )
-    parser.add_argument("--env-file", type=Path, help="Caminho explícito do .env.")
+    parser.add_argument("--env-file", type=Path, help="Explicit .env path.")
     scope = parser.add_mutually_exclusive_group()
-    scope.add_argument("--course-id", type=int, help="Curso específico; padrão: curso do .env.")
     scope.add_argument(
-        "--all-courses", action="store_true", help="Consultar todas as matérias ativas."
+        "--course-id", type=int, help="Specific course; default: course configured in .env."
     )
+    scope.add_argument("--all-courses", action="store_true", help="Read all active courses.")
     parser.add_argument("--period", choices=["this_week", "next_7_days"], default="next_7_days")
     parser.add_argument("--include-completed", action="store_true")
     parser.add_argument(
         "--telegram",
         action="store_true",
-        help="Enviar lembrete ao chat configurado; exige TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID.",
+        help="Send a reminder to the configured chat; "
+        "requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.",
     )
-    parser.add_argument(
-        "--output", type=Path, help="Salvar JSON com permissão 600; padrão: stdout."
-    )
+    parser.add_argument("--output", type=Path, help="Save JSON with mode 600; default: stdout.")
     args = parser.parse_args()
     try:
         settings = Settings.load(args.env_file)
@@ -90,19 +89,19 @@ def main() -> int:
         if args.output is not None:
             save_report(args.output, report)
             print(
-                f"Relatório salvo: {report['count']} atividade(s), "
-                f"{len(report['courses_checked'])} matéria(s)."
+                f"Report saved: {report['count']} assignment(s), "
+                f"{len(report['courses_checked'])} course(s)."
             )
         elif telegram is None:
             print(json.dumps(report, ensure_ascii=False, indent=2))
         if telegram is not None:
             sent = asyncio.run(TelegramClient(telegram).send_report(report))
-            print(f"Telegram confirmou {sent} mensagem(ns).")
+            print(f"Telegram confirmed {sent} message(s).")
     except (CanvasError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 1
     except OSError:
-        print("Não foi possível ler a configuração ou salvar o relatório local.", file=sys.stderr)
+        print("Could not read configuration or save the local report.", file=sys.stderr)
         return 1
     return 0
 

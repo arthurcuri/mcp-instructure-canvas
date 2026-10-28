@@ -21,16 +21,16 @@ def github(arguments: list[str], value: str | None = None) -> None:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
-        raise ValueError("Não foi possível executar GitHub CLI; confira gh auth status.") from None
+        raise ValueError("Could not run GitHub CLI; check gh auth status.") from None
     if result.returncode:
         raise ValueError(
-            "GitHub recusou a configuração. Confira a conta e a permissão no repositório."
+            "GitHub rejected the configuration. Check your account and repository permissions."
         )
 
 
 def configure(repository: str, env_file: Path, activate: bool) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
-        raise ValueError("Informe o repositório no formato proprietário/nome.")
+        raise ValueError("Provide the repository as owner/name.")
     canvas = Settings.load(env_file)
     telegram = TelegramSettings.load(env_file)
     # stdin prevents credentials appearing in argv, shell history or command output.
@@ -65,7 +65,7 @@ def main() -> None:
         message = (
             str(error)
             if isinstance(error, ValueError)
-            else "Não foi possível ler a configuração privada."
+            else "Could not read the private configuration."
         )
         parser.exit(1, message + "\n")
 

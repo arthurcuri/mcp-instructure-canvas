@@ -15,7 +15,12 @@ The optional weekly CLI saves snapshots atomically with file mode `600`. Those
 snapshots may contain course data and must stay in `.local/` or another private
 location. Scheduling templates are not activated automatically and currently
 perform Canvas reads only. Telegram delivery requires explicit opt-in and a
-configured bot/chat; responses and LLM automation are not implemented.
+configured bot/chat. Optional local Codex and Claude agents can respond and perform
+authorized work through that chat. Manual mode waits for an owner request;
+`CANVAS_AGENT_AUTO=true` grants the separate local worker standing authorization to
+prepare and submit eligible named assignments. This mode is disabled by default.
+Installation and contributor tests do not activate it. Provider permissions still apply;
+missing information or extra permissions require attention rather than fabricated work.
 The GitHub Actions schedule requires an enabled repository variable and manually
 configured secrets. Never publish academic reports as public Actions artifacts.
 
@@ -41,6 +46,19 @@ links to the configured chat. GitHub secrets protect credentials at rest; code
 executed by a privileged workflow can access them. Review changes to workflows
 before enabling them with personal secrets.
 
-Report security issues without credentials or personal course content through
-the repository's private vulnerability reporting if enabled. Otherwise, contact
-the maintainer privately rather than disclosing exploitable details in a public issue.
+## Supported versions
+
+Security fixes target the latest release and the development branch. Older releases
+do not have a separate maintenance commitment. Upgrade after reviewing release notes;
+before 1.0, minor releases may include interface changes.
+
+## Report a vulnerability
+
+Use [GitHub private vulnerability reporting](https://github.com/arthurcuri/mcp-instructure-canvas/security/advisories/new)
+if it is enabled. Otherwise, use a private contact option on the
+[maintainer's profile](https://github.com/arthurcuri). If neither is available, open
+an issue requesting a private reporting channel without disclosing exploit details.
+
+Include the affected version, impact, and a minimal reproduction using synthetic
+data. Never include credentials or personal course content. The project is maintained
+on a best-effort basis; no response-time guarantee is offered.

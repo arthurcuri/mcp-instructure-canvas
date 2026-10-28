@@ -27,43 +27,43 @@ class TelegramSettings:
     def load(cls, env_file: Path | None = None, *, require_chat: bool = True):
         path = env_file if env_file is not None else Path.cwd() / ".env"
         if env_file is not None and not path.is_file():
-            raise TelegramError("O arquivo de configuração do Telegram não existe.")
+            raise TelegramError("The Telegram configuration file does not exist.")
         values = dotenv_values(path, interpolate=False) if path.is_file() else {}
         token = str(
             os.environ.get("TELEGRAM_BOT_TOKEN", values.get("TELEGRAM_BOT_TOKEN") or "")
         ).strip()
         chat = str(os.environ.get("TELEGRAM_CHAT_ID", values.get("TELEGRAM_CHAT_ID") or "")).strip()
         if not re.fullmatch(r"[0-9]+:[A-Za-z0-9_-]+", token):
-            raise TelegramError("Configure TELEGRAM_BOT_TOKEN com o token do BotFather.")
+            raise TelegramError("Set TELEGRAM_BOT_TOKEN to the token from BotFather.")
         if require_chat and not re.fullmatch(r"-?[0-9]+", chat):
-            raise TelegramError("Configure TELEGRAM_CHAT_ID com o ID numérico do chat.")
+            raise TelegramError("Set TELEGRAM_CHAT_ID to the numeric chat ID.")
         return cls(token, chat)
 
 
 def reminder_messages(report: dict) -> list[str]:
     lines = [
-        f"Canvas: {report['count']} atividade(s) nos próximos dias.",
-        f"Fuso: {report['timezone']}",
+        f"Canvas: {report['count']} assignment(s) due in the coming days.",
+        f"Timezone: {report['timezone']}",
     ]
     for item in report["assignments"]:
         date = parse_datetime(item.get("due_at_local") or item.get("due_at"))
-        due = date.strftime("%d/%m às %H:%M") if date else "sem prazo"
-        course = item.get("course_name") or f"Matéria {item.get('course_id', '')}"
-        lines.extend(["", f"{course}: {item.get('name', 'Atividade')}", f"Prazo: {due}"])
+        due = date.strftime("%Y-%m-%d at %H:%M") if date else "no deadline"
+        course = item.get("course_name") or f"Course {item.get('course_id', '')}"
+        lines.extend(["", f"{course}: {item.get('name', 'Assignment')}", f"Due: {due}"])
         if item.get("html_url"):
             lines.append(item["html_url"])
     if report.get("undated_count"):
-        lines.extend(["", f"Há {report['undated_count']} atividade(s) sem prazo definido."])
+        lines.extend(["", f"There are {report['undated_count']} assignment(s) without a deadline."])
     if report["count"]:
         lines.extend(
             [
                 "",
-                "Quer ajuda para fazer alguma dessas atividades? "
-                "Use Responder nesta mensagem ou envie o nome/link da atividade.",
+                "Need help with any of these assignments? "
+                "Reply to this message or send the assignment name/link.",
             ]
         )
     else:
-        lines.extend(["", "Nenhuma atividade pendente com prazo nesse período."])
+        lines.extend(["", "No pending assignments are due in this period."])
     # Plain text only. 1,800 code points also fit within Telegram's UTF-16 length limit.
     text = "\n".join(lines)
     return [text[index : index + 1800] for index in range(0, len(text), 1800)]
@@ -89,18 +89,20 @@ class TelegramClient:
                 )
             except httpx.RequestError:
                 raise TelegramError(
-                    "Envio de anexo interrompido; confira o chat antes de repetir."
+                    "Attachment delivery interrupted; check the chat before repeating it."
                 ) from None
         try:
             result = response.json()
         except ValueError:
-            raise TelegramError("Telegram não confirmou o anexo; confira o chat.") from None
+            raise TelegramError(
+                "Telegram did not confirm the attachment; check the chat."
+            ) from None
         if (
             not 200 <= response.status_code < 300
             or not isinstance(result, dict)
             or result.get("ok") is not True
         ):
-            raise TelegramError("Telegram recusou o anexo; o envio não foi repetido.")
+            raise TelegramError("Telegram rejected the attachment; delivery was not retried.")
 
     async def _call(self, method: str, payload: dict) -> object:
         async with httpx.AsyncClient(
@@ -112,24 +114,24 @@ class TelegramClient:
                 )
             except httpx.RequestError:
                 raise TelegramError(
-                    "Conexão com Telegram interrompida; confira o chat antes de repetir. "
-                    "O envio não é repetido automaticamente."
+                    "Telegram connection interrupted; check the chat before repeating. "
+                    "Delivery is not retried automatically."
                 ) from None
         if not 200 <= response.status_code < 300:
-            raise TelegramError(f"Telegram recusou a operação: HTTP {response.status_code}.")
+            raise TelegramError(f"Telegram rejected the operation: HTTP {response.status_code}.")
         try:
             result = response.json()
         except ValueError:
-            raise TelegramError("Telegram retornou uma resposta inválida.") from None
+            raise TelegramError("Telegram returned an invalid response.") from None
         if not isinstance(result, dict) or result.get("ok") is not True:
             raise TelegramError(
-                "Telegram não confirmou a operação. Confira o bot e o chat configurados."
+                "Telegram did not confirm the operation. Check the configured bot and chat."
             )
         return result.get("result")
 
     async def send_report(self, report: dict) -> int:
         if not re.fullmatch(r"-?[0-9]+", self.settings.chat_id):
-            raise TelegramError("Configure TELEGRAM_CHAT_ID antes de enviar.")
+            raise TelegramError("Set TELEGRAM_CHAT_ID before sending.")
         messages = reminder_messages(report)
         for message in messages:
             result = await self._call(
@@ -142,14 +144,14 @@ class TelegramClient:
             )
             if not isinstance(result, dict) or not result.get("message_id"):
                 raise TelegramError(
-                    "Telegram não confirmou um ID de mensagem; confira o chat antes de repetir."
+                    "Telegram did not confirm a message ID; check the chat before repeating."
                 )
         return len(messages)
 
     async def private_chat_ids(self) -> list[int]:
         updates = await self._call("getUpdates", {"timeout": 0, "allowed_updates": ["message"]})
         if not isinstance(updates, list):
-            raise TelegramError("Telegram retornou uma lista de conversas inválida.")
+            raise TelegramError("Telegram returned an invalid chat list.")
         ids = set()
         for update in updates:
             chat = (update.get("message") or {}).get("chat") or {}
@@ -160,7 +162,7 @@ class TelegramClient:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Listar IDs de chats privados que escreveram ao bot, sem enviar mensagens."
+        description="List IDs of private chats that messaged the bot, without sending messages."
     )
     parser.add_argument("--env-file", type=Path)
     args = parser.parse_args()
@@ -170,12 +172,12 @@ def main() -> int:
         for chat in ids:
             print(chat)
         if not ids:
-            print("Nenhum chat privado encontrado. Envie /start ao bot e repita.", file=sys.stderr)
+            print("No private chat found. Send /start to the bot and try again.", file=sys.stderr)
     except (TelegramError, OSError) as error:
         print(
             str(error)
             if isinstance(error, TelegramError)
-            else "Não foi possível ler a configuração local.",
+            else "Could not read the local configuration.",
             file=sys.stderr,
         )
         return 1

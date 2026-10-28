@@ -29,15 +29,15 @@ async def verify(image: str) -> None:
         async with ClientSession(read, write) as session:
             initialized = await session.initialize()
             if initialized.serverInfo.version != __version__:
-                raise ValueError("A versão anunciada pelo MCP diverge da versão do projeto.")
+                raise ValueError("The MCP version differs from the project version.")
             tools = (await session.list_tools()).tools
             if len(tools) != 18 or not any(tool.name == "submit_assignment" for tool in tools):
-                raise ValueError("A imagem não registrou o conjunto esperado de ferramentas MCP.")
+                raise ValueError("The image did not register the expected MCP tools.")
             result = await session.call_tool(
                 "search_canvas_operations", {"query": "assignment", "limit": 1}
             )
             if result.isError or not result.structuredContent:
-                raise ValueError("A imagem não conseguiu consultar o catálogo embarcado.")
+                raise ValueError("The image could not query the bundled catalog.")
             print(
                 json.dumps(
                     {"container_mcp_verified": True, "tools": len(tools), "network_calls": 0}

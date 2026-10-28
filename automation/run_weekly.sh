@@ -18,7 +18,7 @@ if [[ -z "$CANVAS_UV_COMMAND" ]]; then
   done
 fi
 if [[ -z "$CANVAS_UV_COMMAND" || ! -x "$CANVAS_UV_COMMAND" ]]; then
-  echo 'uv não encontrado. Defina CANVAS_UV_BIN com o caminho absoluto do executável.' >&2
+  echo 'uv not found. Set CANVAS_UV_BIN to the absolute executable path.' >&2
   exit 1
 fi
 
