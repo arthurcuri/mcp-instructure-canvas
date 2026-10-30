@@ -85,7 +85,8 @@ def test_long_reminder_is_split_without_losing_text(report):
     messages = reminder_messages(report)
     assert len(messages) > 1
     assert all(0 < len(message.encode("utf-16-le")) // 2 < 4096 for message in messages)
-    assert "👩‍💻" * 3000 in "".join(messages)
+    assert "".join(messages).count("👩‍💻") == 3000
+    assert all("ASSIGNMENTS WITH DEADLINES" in message for message in messages)
     assert "Need help" in messages[-1]
 
 
@@ -109,11 +110,13 @@ def test_weekly_updates_show_without_due_assignments_and_report_incomplete_sourc
         "source_errors": [{"source": "file", "course_name": "Course", "error": "Access denied."}],
     }
     text = "".join(reminder_messages(report))
-    assert "Updates this week: 1" in text
+    assert "DISCUSSIONS (1)" in text
     assert "New replies <b>stay plain text</b>" in text
-    assert "Some sources could not be checked" in text and "Access denied." in text
-    assert "2 item(s) have no update date" in text
-    assert "items can appear again" in text
+    assert "Some areas of Canvas could not be checked" in text
+    assert "Files: unavailable in 1 course." in text
+    assert "Access denied." not in text
+    assert "Without an update date, outside this summary: 2 items." in text
+    assert "same items may appear again until Sunday" in text
 
 
 def test_long_update_summary_is_split_without_losing_unicode_or_links(report):
@@ -137,7 +140,8 @@ def test_long_update_summary_is_split_without_losing_unicode_or_links(report):
     assert len(messages) > 1
     assert all(len(message.encode("utf-16-le")) // 2 < 4096 for message in messages)
     text = "".join(messages)
-    assert "📚" * 5000 in text
+    bodies = "".join(message.split("\n\n", 1)[1] for message in messages)
+    assert bodies.count("📚") == 5000
     assert "https://canvas.example.test/courses/1/pages/notes" in text
 
 

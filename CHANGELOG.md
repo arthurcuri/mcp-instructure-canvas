@@ -2,6 +2,15 @@
 
 This project follows semantic versioning. Before 1.0, minor releases may change interfaces; migration guidance appears in release notes.
 
+## 0.7.1 — 2026-10-30
+
+- Group Telegram summaries into distinct assignment, announcement, discussion, material, and event sections, with compact course labels and numbered items.
+- Pack complete items and links into messages using actual UTF-16 length, with labeled continuations for long sections and oversized fields.
+- Summarize unavailable sources by type and affected-course count instead of repeating technical errors. Preserve full diagnostics and course names in private JSON snapshots.
+- Avoid repeating deadline assignments in the weekly update section and clarify intentional weekly repetition.
+- Add optional Brazilian Portuguese notifications through `CANVAS_NOTIFICATION_LANGUAGE`, keeping English as the default. Format dates in the configured timezone, including UTC fallbacks.
+- Pace multipart delivery and preserve the no-automatic-retry policy after partial or uncertain sends.
+
 ## 0.7.0 — 2026-10-28
 
 - Add `--include-updates` to the weekly CLI and enable it in daily/weekly scheduling templates and the local wrapper.

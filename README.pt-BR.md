@@ -6,7 +6,7 @@
 
 Projeto independente com licença MIT, compatível com instituições que usam Canvas. Configure a URL HTTPS da sua instituição e seu próprio token. O servidor funciona localmente por stdio, com clientes como Claude Code, Codex, Claude Desktop, Gemini CLI, Cursor e Kiro.
 
-A documentação principal e as mensagens do programa são em inglês. Conteúdos consultados no Canvas mantêm o idioma original, e o agente responde no idioma do usuário. Respostas de aprovação em português e o marcador de anexos `[[arquivo: ...]]` continuam aceitos.
+A documentação principal e o idioma padrão do programa são em inglês. As notificações podem usar português com `CANVAS_NOTIFICATION_LANGUAGE=pt-BR`. Conteúdos consultados no Canvas mantêm o idioma original, e o agente responde no idioma do usuário. Respostas de aprovação em português e o marcador de anexos `[[arquivo: ...]]` continuam aceitos.
 
 ## Funcionalidades
 

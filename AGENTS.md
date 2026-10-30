@@ -43,6 +43,8 @@ and the differences between these configurations are documented in `README.md`.
 - `updates.py`: weekly announcement, discussion, page, file, assignment and calendar summaries;
   publication cutoffs, explicit unavailable sources and private institution links.
 - `notifications.py`: explicitly requested Telegram delivery and private chat-ID discovery.
+- `reminder_format.py`: localized reminder sections, compact check-status notices and
+  UTF-16-aware message packing that preserves normal items and links.
 - `agent.py`: provider selection and Claude Channels lifecycle, normal permissions.
 - `codex_rpc.py`: JSONL Codex App Server client; reject API-key authentication.
 - `codex_agent.py`: owner-only polling, conversation persistence, approval relay and attachments.

@@ -43,6 +43,7 @@ def configure(repository: str, env_file: Path, activate: bool) -> dict:
     for name, value in {
         "CANVAS_API_URL": canvas.api_url,
         "CANVAS_TIMEZONE": canvas.timezone,
+        "CANVAS_NOTIFICATION_LANGUAGE": telegram.language,
     }.items():
         github(["variable", "set", name, "--repo", repository, "--body", value])
     if activate:

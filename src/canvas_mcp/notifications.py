@@ -11,7 +11,7 @@ from pathlib import Path
 import httpx
 from dotenv import dotenv_values
 
-from canvas_mcp.service import parse_datetime
+from canvas_mcp.reminder_format import notification_language, reminder_messages
 
 
 class TelegramError(ValueError):
@@ -22,6 +22,7 @@ class TelegramError(ValueError):
 class TelegramSettings:
     token: str = field(repr=False)
     chat_id: str = ""
+    language: str = "en"
 
     @classmethod
     def load(cls, env_file: Path | None = None, *, require_chat: bool = True):
@@ -37,84 +38,16 @@ class TelegramSettings:
             raise TelegramError("Set TELEGRAM_BOT_TOKEN to the token from BotFather.")
         if require_chat and not re.fullmatch(r"-?[0-9]+", chat):
             raise TelegramError("Set TELEGRAM_CHAT_ID to the numeric chat ID.")
-        return cls(token, chat)
-
-
-def reminder_messages(report: dict) -> list[str]:
-    lines = [
-        f"Canvas: {report['count']} assignment(s) due in the coming days.",
-        f"Timezone: {report['timezone']}",
-    ]
-    for item in report["assignments"]:
-        date = parse_datetime(item.get("due_at_local") or item.get("due_at"))
-        due = date.strftime("%Y-%m-%d at %H:%M") if date else "no deadline"
-        course = item.get("course_name") or f"Course {item.get('course_id', '')}"
-        lines.extend(["", f"{course}: {item.get('name', 'Assignment')}", f"Due: {due}"])
-        if item.get("html_url"):
-            lines.append(item["html_url"])
-    if report.get("undated_count"):
-        lines.extend(["", f"There are {report['undated_count']} assignment(s) without a deadline."])
-    if report["count"]:
-        lines.extend(
-            [
-                "",
-                "Need help with any of these assignments? "
-                "Reply to this message or send the assignment name/link.",
-            ]
-        )
-    else:
-        lines.extend(["", "No pending assignments are due in this period."])
-    updates = report.get("updates")
-    if updates is not None:
-        labels = {
-            "announcement": "Announcement",
-            "discussion": "Discussion topic or replies",
-            "page": "Page",
-            "file": "File",
-            "assignment": "New or updated assignment",
-            "calendar_event": "Calendar event",
-        }
-        start = parse_datetime(updates["start_inclusive"])
-        end = parse_datetime(updates["end_exclusive"])
-        lines.extend(
-            [
-                "",
-                f"Updates this week: {updates['count']}",
-                f"Published/changed: {start:%Y-%m-%d %H:%M} to {end:%Y-%m-%d %H:%M}",
-            ]
-        )
-        for item in updates["items"]:
-            changed = parse_datetime(item["changed_at_local"])
-            lines.extend(
-                [
-                    "",
-                    f"{labels[item['kind']]} · {item['course_name']}: {item['title']}",
-                    f"Published/changed: {changed:%Y-%m-%d at %H:%M}",
-                ]
+        raw_language = str(
+            os.environ.get(
+                "CANVAS_NOTIFICATION_LANGUAGE", values.get("CANVAS_NOTIFICATION_LANGUAGE") or "en"
             )
-            if item.get("starts_at_local"):
-                starts = parse_datetime(item["starts_at_local"])
-                lines.append(f"Event starts: {starts:%Y-%m-%d at %H:%M}")
-            lines.append(item["html_url"])
-        if not updates["count"]:
-            lines.append("No dated updates found in the checked sources for this week.")
-        if updates["undated_count"]:
-            lines.append(
-                f"{updates['undated_count']} item(s) have no update date and could not be placed "
-                "in this week's summary."
-            )
-        if updates["source_errors"]:
-            lines.extend(["", "Some sources could not be checked:"])
-            for error in updates["source_errors"]:
-                lines.append(
-                    f"{error['course_name']} · {labels[error['source']]}: {error['error']}"
-                )
-        lines.extend(
-            ["", "This is a weekly snapshot; items can appear again in the next daily summary."]
         )
-    # Plain text only. 1,800 code points also fit within Telegram's UTF-16 length limit.
-    text = "\n".join(lines)
-    return [text[index : index + 1800] for index in range(0, len(text), 1800)]
+        try:
+            language = notification_language(raw_language)
+        except ValueError as error:
+            raise TelegramError(str(error)) from None
+        return cls(token, chat, language)
 
 
 class TelegramClient:
@@ -180,8 +113,10 @@ class TelegramClient:
     async def send_report(self, report: dict) -> int:
         if not re.fullmatch(r"-?[0-9]+", self.settings.chat_id):
             raise TelegramError("Set TELEGRAM_CHAT_ID before sending.")
-        messages = reminder_messages(report)
-        for message in messages:
+        messages = reminder_messages(report, language=self.settings.language)
+        for index, message in enumerate(messages):
+            if index:
+                await asyncio.sleep(1.05)
             result = await self._call(
                 "sendMessage",
                 {

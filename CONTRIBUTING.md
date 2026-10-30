@@ -28,7 +28,7 @@ No `.env`, Canvas account, network access to Canvas, Telegram bot, or model subs
 - Keep Canvas reads and writes separate. Respect `CANVAS_READ_ONLY` in both the MCP surface and transport. Never add automatic write retries.
 - Add meaningful regression tests for changed behavior, especially pagination, date boundaries, credential handling, tool schemas, and uncertain write outcomes. Documentation-only changes do not need unit tests.
 - Use fictitious institutions, paths, tokens, and coursework in examples and fixtures. Preserve multilingual Canvas content rather than translating user data.
-- Keep runtime messages and shared instructions in English. Preserve supported Portuguese approval replies and attachment markers for existing users.
+- Keep English as the default for runtime messages and shared instructions. Reminder translations live in `reminder_format.py`; preserve supported Portuguese approval replies and attachment markers for existing users.
 - Update the appropriate guide and add a concise entry under `Unreleased` in [CHANGELOG.md](CHANGELOG.md) when behavior changes. Do not bump the release version in ordinary contributions.
 
 ## Validate

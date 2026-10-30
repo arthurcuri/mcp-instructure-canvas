@@ -18,7 +18,7 @@ An independent, MIT-licensed [Model Context Protocol](https://modelcontextprotoc
 
 [Português (Brasil)](README.pt-BR.md) · [Installation](docs/setup.md) · [API guide](docs/api.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-**Version 0.7.0** · [Release notes](docs/releases/0.7.0.md) · [Packages and Docker](docs/packages.md)
+**Version 0.7.1** · [Release notes](docs/releases/0.7.1.md) · [Packages and Docker](docs/packages.md)
 
 ## What you can do
 

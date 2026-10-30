@@ -24,6 +24,7 @@ jobs:
       CANVAS_API_URL: ${{ vars.CANVAS_API_URL }}
       CANVAS_API_TOKEN: ${{ secrets.CANVAS_API_TOKEN }}
       CANVAS_TIMEZONE: ${{ vars.CANVAS_TIMEZONE || 'America/Sao_Paulo' }}
+      CANVAS_NOTIFICATION_LANGUAGE: ${{ vars.CANVAS_NOTIFICATION_LANGUAGE || 'en' }}
       CANVAS_READ_ONLY: "true"
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

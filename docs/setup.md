@@ -24,6 +24,7 @@ Copy `.env.example` only if `.env` does not already exist, then edit it locally.
 | `CANVAS_API_TOKEN` | Required personal Canvas token |
 | `CANVAS_DEFAULT_COURSE_ID` | Optional positive course ID, taken from `/courses/12345` in a course URL |
 | `CANVAS_TIMEZONE` | IANA timezone for displayed dates, such as `UTC` or `America/Sao_Paulo`; runtime fallback is `America/Sao_Paulo` |
+| `CANVAS_NOTIFICATION_LANGUAGE` | Optional reminder language: `en` (default) or `pt-BR`; does not translate course content |
 | `CANVAS_TOKEN_EXPIRES_AT` | Optional private reminder in `YYYY-MM-DD`; does not change or verify expiration in Canvas |
 | `CANVAS_READ_ONLY` | `true` hides four mutation tools and rejects writes in the HTTP client; the example enables it, while the runtime fallback remains `false` for compatibility |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Only needed for Telegram reminders or an agent |
