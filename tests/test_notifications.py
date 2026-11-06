@@ -109,7 +109,7 @@ def test_weekly_updates_show_without_due_assignments_and_report_incomplete_sourc
         "undated_count": 2,
         "source_errors": [{"source": "file", "course_name": "Course", "error": "Access denied."}],
     }
-    text = "".join(reminder_messages(report))
+    text = "".join(reminder_messages(report, sections="all"))
     assert "DISCUSSIONS (1)" in text
     assert "New replies <b>stay plain text</b>" in text
     assert "Some areas of Canvas could not be checked" in text
@@ -136,7 +136,7 @@ def test_long_update_summary_is_split_without_losing_unicode_or_links(report):
         "undated_count": 0,
         "source_errors": [],
     }
-    messages = reminder_messages(report)
+    messages = reminder_messages(report, sections="all")
     assert len(messages) > 1
     assert all(len(message.encode("utf-16-le")) // 2 < 4096 for message in messages)
     text = "".join(messages)

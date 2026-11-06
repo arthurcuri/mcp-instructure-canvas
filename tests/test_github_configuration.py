@@ -17,6 +17,7 @@ def test_credentials_go_only_to_stdin_and_activation_is_explicit(tmp_path, monke
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_CHAT_ID",
         "CANVAS_NOTIFICATION_LANGUAGE",
+        "CANVAS_NOTIFICATION_SECTIONS",
     ):
         monkeypatch.delenv(name, raising=False)
     env = tmp_path / ".env"
@@ -28,9 +29,11 @@ def test_credentials_go_only_to_stdin_and_activation_is_explicit(tmp_path, monke
     monkeypatch.setattr(module, "github", lambda args, value=None: calls.append((args, value)))
     result = module.configure("owner/repo", env, False)
     assert result["daily_enabled"] is False
-    assert len(calls) == 6
-    assert calls[-1][0][2] == "CANVAS_NOTIFICATION_LANGUAGE"
-    assert calls[-1][0][-1] == "en"
+    assert len(calls) == 7
+    assert calls[-2][0][2] == "CANVAS_NOTIFICATION_LANGUAGE"
+    assert calls[-2][0][-1] == "en"
+    assert calls[-1][0][2] == "CANVAS_NOTIFICATION_SECTIONS"
+    assert calls[-1][0][-1] == "deadlines,announcements"
     assert calls[0][1] == "canvas-private-secret"
     assert calls[1][1] == "12345:telegram-private-secret"
     assert all("private-secret" not in str(args) for args, _ in calls)

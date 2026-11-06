@@ -13,7 +13,7 @@ A documentação principal e o idioma padrão do programa são em inglês. As no
 | Componente | O que faz | Onde executa |
 |---|---|---|
 | MCP do Canvas | Consulta cursos, atividades, rubricas, módulos e páginas; usa REST, GraphQL e arquivos | Processo iniciado pelo cliente MCP |
-| Lembretes opcionais | Envia prazos e novidades da semana: anúncios, fóruns, páginas, arquivos e outras publicações, sem chamadas a modelos | GitHub Actions ou agendador local |
+| Lembretes opcionais | Envia atividades com prazo e comunicados no Telegram; outras seções são opcionais, sem chamadas a modelos | GitHub Actions ou agendador local |
 | Agente opcional | Ajuda por Telegram, prepara arquivos e envia atividades quando autorizado | Seu computador, com Codex ou Claude Code |
 
 São **18 ferramentas**, ou **14 no modo somente leitura**, e um catálogo de **1.118 operações REST em 144 grupos**, capturado em 13/10/2026. A conta mantém as permissões da instituição. Cobertura do catálogo não significa teste real de todos os endpoints.

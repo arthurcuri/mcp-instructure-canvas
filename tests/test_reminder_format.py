@@ -51,10 +51,45 @@ def news(kind, identifier):
     }
 
 
-def test_grouped_sections_have_short_courses_and_leave_structured_report_unchanged():
+@pytest.mark.parametrize("language", ["en", "pt-BR"])
+def test_default_summary_shows_only_deadlines_and_announcements(language):
+    report = digest()
+    report["updates"]["source_errors"] = [
+        {"source": "file", "course_id": 1, "error": "Unavailable source"}
+    ]
+    before = deepcopy(report)
+    messages = reminder_messages(report, language=language)
+    assert len(messages) == 2
+    text = "\n".join(messages)
+    assert "Final project" in messages[0]
+    assert "announcement title 3" in messages[1]
+    for item in report["updates"]["items"]:
+        if item["kind"] != "announcement":
+            assert item["title"] not in text
+    for removed in (
+        "SOBRE A CONSULTA",
+        "CHECK STATUS",
+        "sem prazo",
+        "without a due date",
+        "Unavailable source",
+        "até domingo",
+        "until Sunday",
+    ):
+        assert removed not in text
+    assert report == before
+
+
+def test_selected_announcements_do_not_emit_a_deadline_section():
+    messages = reminder_messages(digest(), sections="announcements", language="pt-BR")
+    assert len(messages) == 1
+    assert "COMUNICADOS" in messages[0]
+    assert "Final project" not in messages[0]
+
+
+def test_all_sections_have_short_courses_and_leave_structured_report_unchanged():
     report = digest()
     before = deepcopy(report)
-    messages = reminder_messages(report)
+    messages = reminder_messages(report, sections="all")
     headings = [message.splitlines()[0] for message in messages]
     assert len(messages) == 7
     for heading, expected in zip(
@@ -82,7 +117,7 @@ def test_grouped_sections_have_short_courses_and_leave_structured_report_unchang
 def test_different_courses_with_the_same_short_name_keep_their_distinct_labels():
     report = digest()
     report["updates"]["items"][0]["course_name"] = "Computing - Morning - 2030/2"
-    text = "\n".join(reminder_messages(report))
+    text = "\n".join(reminder_messages(report, sections="all"))
     assert "Computing - Morning - 2030/2" in text
     assert "Computing - Evening - 2030/2" in text
 
@@ -103,7 +138,7 @@ def test_due_assignments_are_not_repeated_in_the_weekly_assignment_section(match
         item.update(id=1)
     else:
         item["html_url"] = report["assignments"][0]["html_url"]
-    text = "\n".join(reminder_messages(report))
+    text = "\n".join(reminder_messages(report, sections="all"))
     assert "Final project" in text
     assert item["title"] not in text
     assert "NEW OR UPDATED ASSIGNMENTS" not in text
@@ -138,7 +173,7 @@ def test_brazilian_portuguese_uses_local_dates_and_clear_aggregated_check_status
         for source, count in [("page", 8), ("file", 7)]
         for index in range(count)
     ]
-    messages = reminder_messages(report, language="pt-BR")
+    messages = reminder_messages(report, language="pt-BR", sections="all")
     text = "\n".join(messages)
     assert "📚 ATIVIDADES COM PRAZO (1)" in messages[0]
     assert "Prazo: 30/06/2030 às 23:59" in text
@@ -185,6 +220,17 @@ async def test_partial_delivery_does_not_retry_and_waits_between_section_message
     pause.assert_awaited_once()
 
 
+async def test_delivery_respects_the_configured_section_selection():
+    client = TelegramClient(
+        TelegramSettings("123:synthetic-secret", "123", "pt-BR", "announcements")
+    )
+    client._call = AsyncMock(return_value={"message_id": 1})
+    assert await client.send_report(digest()) == 1
+    text = client._call.call_args.args[1]["text"]
+    assert "COMUNICADOS" in text
+    assert "Final project" not in text
+
+
 async def test_an_unrepresentable_link_is_rejected_before_any_delivery():
     report = digest()
     report["assignments"][0]["html_url"] = "https://canvas.example.test/" + "x" * 5000
@@ -193,3 +239,24 @@ async def test_an_unrepresentable_link_is_rejected_before_any_delivery():
     with pytest.raises(ValueError, match="link exceeds"):
         await client.send_report(report)
     client._call.assert_not_called()
+
+
+def test_section_configuration_obeys_environment_and_rejects_invalid_values(tmp_path, monkeypatch):
+    for name in (
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_CHAT_ID",
+        "CANVAS_NOTIFICATION_LANGUAGE",
+        "CANVAS_NOTIFICATION_SECTIONS",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    config = tmp_path / ".env"
+    config.write_text("TELEGRAM_BOT_TOKEN=123:synthetic-secret\nTELEGRAM_CHAT_ID=123\n")
+    assert TelegramSettings.load(config).sections == "deadlines,announcements"
+    config.write_text(config.read_text() + "CANVAS_NOTIFICATION_SECTIONS=all\n")
+    assert "materials" in TelegramSettings.load(config).sections
+    monkeypatch.setenv("CANVAS_NOTIFICATION_SECTIONS", " announcements, deadlines,announcements ")
+    assert TelegramSettings.load(config).sections == "announcements,deadlines"
+    monkeypatch.setenv("CANVAS_NOTIFICATION_SECTIONS", "do-not-echo-this-value")
+    with pytest.raises(TelegramError, match="CANVAS_NOTIFICATION_SECTIONS") as error:
+        TelegramSettings.load(config)
+    assert "do-not-echo" not in str(error.value)

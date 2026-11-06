@@ -68,6 +68,16 @@ fields, ambiguous course labels, assignment deduplication, language configuratio
 timezone conversion, and no retry after a partial delivery failure. Full source
 diagnostics remain in the private JSON snapshot.
 
+## November 5, 2026: notification section selection
+
+Version 0.7.2 passed 229 mocked tests and the standard lint, formatting, shell,
+build and archive checks. Rendering an existing private snapshot with the default
+selection produced only deadline and announcement messages; the snapshot retained
+all collected updates and source diagnostics. No live delivery was needed.
+
+Tests cover both notification languages, excluded sections, explicit selections,
+the complete `all` format, configuration validation, and selection during delivery.
+
 ## Reproduce on your own installation
 
 Offline contribution checks are in [CONTRIBUTING.md](../CONTRIBUTING.md). The following commands deliberately access your own configured account:
@@ -80,7 +90,7 @@ uv run canvas-agent status
 
 `verify_mcp.py` uses the first active course, or an explicit `--course-id 12345`. No configured default course is required. With no active courses, it still checks the protocol and all-course deadline query, and reports skipped course-detail checks. It prints counts/status rather than course bodies.
 
-To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.7.1` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
+To inspect Canvas through Docker, use `--container ghcr.io/arthurcuri/mcp-instructure-canvas:v0.7.2` with Docker running. Live MCP checks are read-only. To test Telegram inbound behavior, the owner must send their own query; the Bot API cannot send an inbound message on their behalf. Keep one update consumer per bot.
 
 A manual reminder workflow run sends a real message when bot secrets are configured. That is optional integration work, not a contributor requirement.
 

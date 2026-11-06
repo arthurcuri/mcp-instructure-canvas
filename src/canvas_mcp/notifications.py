@@ -11,7 +11,12 @@ from pathlib import Path
 import httpx
 from dotenv import dotenv_values
 
-from canvas_mcp.reminder_format import notification_language, reminder_messages
+from canvas_mcp.reminder_format import (
+    DEFAULT_SECTIONS,
+    notification_language,
+    notification_sections,
+    reminder_messages,
+)
 
 
 class TelegramError(ValueError):
@@ -23,6 +28,7 @@ class TelegramSettings:
     token: str = field(repr=False)
     chat_id: str = ""
     language: str = "en"
+    sections: str = DEFAULT_SECTIONS
 
     @classmethod
     def load(cls, env_file: Path | None = None, *, require_chat: bool = True):
@@ -45,9 +51,17 @@ class TelegramSettings:
         )
         try:
             language = notification_language(raw_language)
+            sections = notification_sections(
+                str(
+                    os.environ.get(
+                        "CANVAS_NOTIFICATION_SECTIONS",
+                        values.get("CANVAS_NOTIFICATION_SECTIONS") or DEFAULT_SECTIONS,
+                    )
+                )
+            )
         except ValueError as error:
             raise TelegramError(str(error)) from None
-        return cls(token, chat, language)
+        return cls(token, chat, language, sections)
 
 
 class TelegramClient:
@@ -113,7 +127,9 @@ class TelegramClient:
     async def send_report(self, report: dict) -> int:
         if not re.fullmatch(r"-?[0-9]+", self.settings.chat_id):
             raise TelegramError("Set TELEGRAM_CHAT_ID before sending.")
-        messages = reminder_messages(report, language=self.settings.language)
+        messages = reminder_messages(
+            report, language=self.settings.language, sections=self.settings.sections
+        )
         for index, message in enumerate(messages):
             if index:
                 await asyncio.sleep(1.05)

@@ -2,6 +2,12 @@
 
 This project follows semantic versioning. Before 1.0, minor releases may change interfaces; migration guidance appears in release notes.
 
+## 0.7.2 — 2026-11-05
+
+- Show only assignment deadlines and announcements in Telegram by default, omitting other update categories, check-status messages and undated-assignment notes.
+- Add `CANVAS_NOTIFICATION_SECTIONS` for explicit section selection, with `all` restoring the complete format. Apply the selection to local delivery, scheduling templates and the GitHub configuration helper.
+- Preserve complete collected updates and diagnostics in private JSON snapshots and keep source-error counts visible in scheduled logs.
+
 ## 0.7.1 — 2026-10-30
 
 - Group Telegram summaries into distinct assignment, announcement, discussion, material, and event sections, with compact course labels and numbered items.

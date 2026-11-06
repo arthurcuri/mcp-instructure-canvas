@@ -8,6 +8,16 @@ from zoneinfo import ZoneInfo
 from canvas_mcp.service import parse_datetime
 
 MESSAGE_LIMIT = 4000  # Leave room below Telegram's 4,096 UTF-16-unit limit.
+DEFAULT_SECTIONS = "deadlines,announcements"
+SECTIONS = {
+    "deadlines": "deadlines",
+    "assignments": "assignment",
+    "announcements": "announcement",
+    "discussions": "discussion",
+    "materials": "materials",
+    "events": "calendar_event",
+    "status": "status",
+}
 
 TEXT = {
     "en": {
@@ -108,6 +118,19 @@ def notification_language(value: str) -> str:
     return language
 
 
+def notification_sections(value: str) -> str:
+    if value.strip().lower() == "all":
+        return ",".join(SECTIONS)
+    sections = list(dict.fromkeys(part.strip().lower() for part in value.split(",")))
+    if not sections or any(section not in SECTIONS for section in sections):
+        raise ValueError(
+            "CANVAS_NOTIFICATION_SECTIONS must be a comma-separated selection of "
+            "deadlines, assignments, announcements, discussions, materials, events, status; "
+            "or all."
+        )
+    return ",".join(sections)
+
+
 def utf16_length(text: str) -> int:
     return len(text.encode("utf-16-le")) // 2
 
@@ -204,12 +227,23 @@ def _course_names(items: list[dict], words: dict) -> dict[str, str]:
     return {name: short if duplicates[short] == 1 else name for name, short in names.items()}
 
 
-def reminder_messages(report: dict, *, language: str = "en") -> list[str]:
+def reminder_messages(
+    report: dict, *, language: str = "en", sections: str = DEFAULT_SECTIONS
+) -> list[str]:
     words = TEXT[notification_language(language)]
+    visible = {SECTIONS[section] for section in notification_sections(sections).split(",")}
     timezone = ZoneInfo(report["timezone"])
     updates = report.get("updates")
-    news = updates["items"] if updates else []
-    due_items = report["assignments"]
+    news = (
+        [
+            item
+            for item in updates["items"]
+            if ("materials" if item["kind"] in {"file", "page"} else item["kind"]) in visible
+        ]
+        if updates
+        else []
+    )
+    due_items = report["assignments"] if "deadlines" in visible else []
     course_names = _course_names([*due_items, *news], words)
     context = f"{words['timezone']}: {report['timezone']}"
     news_context = context
@@ -262,15 +296,19 @@ def reminder_messages(report: dict, *, language: str = "en") -> list[str]:
         deadline_blocks.append("\n".join(lines))
     if not deadline_blocks:
         deadline_blocks.append(words["no_due"])
-    if report.get("undated_count"):
+    if report.get("undated_count") and "status" in visible:
         count = report["undated_count"]
         deadline_blocks.append(
             words["undated_assignments"].format(count=count, assignments=noun("assignment", count))
         )
     if due_items:
         deadline_blocks.append(words["help"])
-    messages = _section(
-        f"{words['deadlines']} ({len(due_items)})", context, deadline_blocks, words["continued"]
+    messages = (
+        _section(
+            f"{words['deadlines']} ({len(due_items)})", context, deadline_blocks, words["continued"]
+        )
+        if "deadlines" in visible
+        else []
     )
 
     for kind, items in grouped.items():
@@ -294,7 +332,7 @@ def reminder_messages(report: dict, *, language: str = "en") -> list[str]:
             _section(f"{words[kind]} ({len(items)})", news_context, blocks, words["continued"])
         )
 
-    if updates is not None:
+    if updates is not None and "status" in visible:
         notes = []
         if not news:
             notes.append(words["no_updates"])

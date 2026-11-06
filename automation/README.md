@@ -31,7 +31,7 @@ The deadline section still uses the selected deadline period, normally the next 
 
 Summaries contain titles, local dates, course names, and institution links; they do not copy message bodies, forum replies, or signed storage URLs. Existing topics with new replies appear once per snapshot, rather than once per reply. The server does not mark announcements or discussions as read.
 
-This covers the listed API sources, not every possible Canvas change: module rearrangements, grade changes, and external-tool activity are not tracked. Drafts and future announcements are excluded. A missing update date is counted explicitly. Inaccessible/failed sources remain explicit with `updates.complete=false`. Telegram groups them by source and affected-course count; the private snapshot retains full sanitized diagnostics and course names. An unavailable source is never presented as having no news. Malformed dates fail the run before replacing its report.
+This covers the listed API sources, not every possible Canvas change: module rearrangements, grade changes, and external-tool activity are not tracked. Drafts and future announcements are excluded. A missing update date is counted explicitly. Inaccessible/failed sources remain explicit with `updates.complete=false`. The private snapshot retains full sanitized diagnostics and course names, and scheduled logs report failure counts. The optional `status` notification section groups them by source and affected-course count. An unavailable source is never presented as having no news. Malformed dates fail the run before replacing its report.
 
 Contracts: [Announcements](https://developerdocs.instructure.com/services/canvas/resources/announcements), [Discussion Topics](https://developerdocs.instructure.com/services/canvas/resources/discussion_topics), [Pages](https://developerdocs.instructure.com/services/canvas/resources/pages), [Files](https://developerdocs.instructure.com/services/canvas/resources/files), and [Calendar Events](https://developerdocs.instructure.com/services/canvas/resources/calendar_events).
 
@@ -55,9 +55,11 @@ Contracts: [Announcements](https://developerdocs.instructure.com/services/canvas
 
 Chat discovery sends no messages and does not advance the polling offset. Use a dedicated bot without a webhook or competing update consumer. Do not run discovery while an agent receiver is active. If no chat appears, send a fresh `/start`.
 
-Without `--telegram`, local snapshot commands do not send messages even if credentials are configured. Reminders use plain text and disable link previews. Assignments, announcements, discussions, materials, and events have separate sections. Normal items and links stay together; continued messages repeat their category. Course labels are shortened when unambiguous, and full names remain in the private snapshot. Unusually large fields use labeled continuations within Telegram's UTF-16 limit. Multipart delivery is paced, without automatic retries. Delivery is not retried automatically: a transport failure can happen after delivery, and multipart reports can be partially sent. Check the chat before repeating.
+Without `--telegram`, local snapshot commands do not send messages even if credentials are configured. Reminders use plain text and disable link previews. By default, only assignments with deadlines and announcements are sent. Other categories and check-status messages are optional. Normal items and links stay together; continued messages repeat their category. Course labels are shortened when unambiguous, and full names remain in the private snapshot. Unusually large fields use labeled continuations within Telegram's UTF-16 limit. Multipart delivery is paced, without automatic retries. Delivery is not retried automatically: a transport failure can happen after delivery, and multipart reports can be partially sent. Check the chat before repeating.
 
-For Portuguese reminders, set `CANVAS_NOTIFICATION_LANGUAGE=pt-BR` in the private `.env` for local commands, or in Actions repository **Variables** for cloud reminders. The project defaults to English; original course titles are preserved. For example, check-status messages summarize unavailable pages/files in a few lines rather than repeating raw HTTP errors.
+For Portuguese reminders, set `CANVAS_NOTIFICATION_LANGUAGE=pt-BR` in the private `.env` for local commands, or in Actions repository **Variables** for cloud reminders. The project defaults to English; original course titles are preserved. The optional check-status section summarizes unavailable pages/files rather than repeating raw HTTP errors.
+
+Set `CANVAS_NOTIFICATION_SECTIONS=deadlines,announcements` to send only assignment deadlines and announcements (the default). Other supported sections are `assignments` (new/updated assignments), `discussions`, `materials`, `events`, and `status`. Use `all` for the complete format. Set this in the private `.env` locally or in Actions repository **Variables** for cloud delivery. The selection affects Telegram only: the private snapshot keeps all collected sources and diagnostics.
 
 A reminder includes selected assignment and update titles, dates, and links. Reply to a reminder or send its assignment URL to a separately configured agent when you want help; sending a reminder alone does not start agent work.
 
@@ -82,6 +84,7 @@ Open **Settings → Secrets and variables → Actions**:
 | Variable | `CANVAS_API_URL` | **Required:** your institution's HTTPS Canvas URL |
 | Variable | `CANVAS_TIMEZONE` | Your IANA report timezone; workflow fallback is `America/Sao_Paulo` |
 | Variable, optional | `CANVAS_NOTIFICATION_LANGUAGE` | Reminder language: `en` (default) or `pt-BR` |
+| Variable, optional | `CANVAS_NOTIFICATION_SECTIONS` | `deadlines,announcements` (default), a category selection, or `all` |
 | Secret, optional | `TELEGRAM_BOT_TOKEN` | Your bot token |
 | Secret, optional | `TELEGRAM_CHAT_ID` | Your private chat ID |
 
@@ -89,7 +92,7 @@ The workflow deliberately has no default institution URL. Both Telegram secrets 
 
 From the Actions tab, manually run the chosen workflow and inspect status/counts. **This sends a real Telegram message when both bot secrets are configured.** To enable recurring runs, set the corresponding enable variable to exactly `true` and disable the other frequency. Pushing source changes alone does not configure secrets or enable scheduled runs.
 
-The helper below is an alternative when you explicitly want to copy the three credentials from your local private `.env` to your own repository, plus URL, timezone, and notification-language variables:
+The helper below is an alternative when you explicitly want to copy the three credentials from your local private `.env` to your own repository, plus URL, timezone, notification-language and section-selection variables:
 
 ```sh
 uv run python automation/configure_github.py --repo YOUR-USERNAME/mcp-instructure-canvas
